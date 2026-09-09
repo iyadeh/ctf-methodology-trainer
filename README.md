@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CTF Methodology Trainer
 
-## Getting Started
+CTF Methodology Trainer is a local-first cybersecurity training companion. It turns machine writeups into hidden knowledge and guides learners through a structured, evidence-driven penetration-testing methodology without revealing solutions prematurely.
 
-First, run the development server:
+Current repository state covers Stage 01 project foundation only. App Shell and application routes are not implemented yet.
+
+## Technology foundation
+
+- Next.js App Router
+- React
+- TypeScript
+- Tailwind CSS
+- shadcn/ui
+- pnpm
+
+PostgreSQL, Drizzle ORM, Zod, and Gemini integration belong to later stages.
+
+## Requirements
+
+- Node.js 20 or newer
+- pnpm version declared in `package.json`
+
+Enable pnpm through Corepack if needed:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+corepack enable
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Development
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Install dependencies:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+pnpm install
+```
 
-## Learn More
+Start development server:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+pnpm dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Quality checks
 
-## Deploy on Vercel
+```bash
+pnpm lint
+pnpm typecheck
+pnpm build
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Project documentation
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [`docs/PRD.md`](docs/PRD.md): product source of truth
+- [`docs/frontend.md`](docs/frontend.md): frontend source of truth
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): technical architecture
+
+Development must preserve server-side hidden knowledge, deterministic methodology rules, and schema-driven frontend rendering.
