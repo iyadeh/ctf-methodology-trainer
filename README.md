@@ -2,7 +2,7 @@
 
 CTF Methodology Trainer is a local-first cybersecurity training companion. It turns machine writeups into hidden knowledge and guides learners through a structured, evidence-driven penetration-testing methodology without revealing solutions prematurely.
 
-Current repository state covers Stage 01 project foundation only. App Shell and application routes are not implemented yet.
+Current repository state includes application UI and local database infrastructure. Domain schema and persistence are not implemented yet.
 
 ## Technology foundation
 
@@ -11,14 +11,17 @@ Current repository state covers Stage 01 project foundation only. App Shell and 
 - TypeScript
 - Tailwind CSS
 - shadcn/ui
+- PostgreSQL 17 through Docker Compose
+- Drizzle ORM
 - pnpm
 
-PostgreSQL, Drizzle ORM, Zod, and Gemini integration belong to later stages.
+Zod and Gemini integration belong to later stages.
 
 ## Requirements
 
 - Node.js 20 or newer
 - pnpm version declared in `package.json`
+- Docker Desktop with Docker Compose
 
 Enable pnpm through Corepack if needed:
 
@@ -41,6 +44,28 @@ pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+
+## Database development
+
+Copy `.env.example` to `.env.local`, then start PostgreSQL:
+
+```bash
+pnpm db:up
+```
+
+Verify the connection:
+
+```bash
+pnpm db:check
+```
+
+Stop PostgreSQL without deleting its named volume:
+
+```bash
+pnpm db:down
+```
+
+Next.js continues to run directly on Windows with `pnpm dev`.
 
 ## Quality checks
 
