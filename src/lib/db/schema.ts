@@ -232,6 +232,7 @@ export const sessionChecks = pgTable(
     description: text("description"),
     priority: checkPriorityEnum("priority").notNull(),
     provenance: sessionCheckProvenanceEnum("provenance").notNull(),
+    sortOrder: integer("sort_order").notNull(),
     status: sessionCheckStatusEnum("status").default("inactive").notNull(),
     sourceVersion: integer("source_version"),
     activatedAt: timestamp("activated_at", { withTimezone: true }),
@@ -245,6 +246,10 @@ export const sessionChecks = pgTable(
       table.trainingSessionId,
       table.semanticKey,
     ),
+    unique("session_checks_phase_sort_order_unique").on(
+      table.sessionPhaseId,
+      table.sortOrder,
+    ),
     index("session_checks_session_phase_id_index").on(table.sessionPhaseId),
     index("session_checks_framework_check_id_index").on(table.frameworkCheckId),
     index("session_checks_session_status_index").on(
@@ -255,6 +260,7 @@ export const sessionChecks = pgTable(
       "session_checks_source_version_positive",
       sql`${table.sourceVersion} is null or ${table.sourceVersion} > 0`,
     ),
+    check("session_checks_sort_order_nonnegative", sql`${table.sortOrder} >= 0`),
   ],
 );
 
