@@ -8,10 +8,12 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run src/modules",
     "db:up": "docker compose --env-file .env.local up -d",
     "db:down": "docker compose --env-file .env.local down",
     "db:logs": "docker compose --env-file .env.local logs -f postgres",
     "db:check": "node scripts/db-check.mjs",
+    "db:seed": "node scripts/db-seed.mjs",
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config=drizzle.config.ts",
     "db:studio": "drizzle-kit studio --config=drizzle.config.ts"
@@ -40,7 +42,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^5.0.0"
   },
   "packageManager": "pnpm@11.22.0"
 }
