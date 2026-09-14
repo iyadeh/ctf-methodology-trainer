@@ -1,9 +1,12 @@
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "../../lib/db";
 import {
+  attempts,
+  findings,
   frameworkChecks,
   frameworkPhases,
   frameworks,
+  hypotheses,
   methodologyDeviations,
   sessionChecks,
   sessionPhases,
@@ -258,7 +261,30 @@ export async function loadTrainingSessionSnapshot(sessionId: string) {
         .where(eq(sessionChecks.trainingSessionId, sessionId))
         .orderBy(asc(sessionChecks.sortOrder));
 
-      return { session, phases, checks };
+      const sessionFindings = await transaction
+        .select()
+        .from(findings)
+        .where(eq(findings.trainingSessionId, sessionId))
+        .orderBy(asc(findings.createdAt), asc(findings.id));
+      const sessionHypotheses = await transaction
+        .select()
+        .from(hypotheses)
+        .where(eq(hypotheses.trainingSessionId, sessionId))
+        .orderBy(asc(hypotheses.createdAt), asc(hypotheses.id));
+      const sessionAttempts = await transaction
+        .select()
+        .from(attempts)
+        .where(eq(attempts.trainingSessionId, sessionId))
+        .orderBy(asc(attempts.createdAt), asc(attempts.id));
+
+      return {
+        session,
+        phases,
+        checks,
+        findings: sessionFindings,
+        hypotheses: sessionHypotheses,
+        attempts: sessionAttempts,
+      };
     },
     { isolationLevel: "repeatable read", accessMode: "read only" },
   );

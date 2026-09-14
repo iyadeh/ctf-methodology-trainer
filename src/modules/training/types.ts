@@ -1,4 +1,7 @@
 import type {
+  attempts,
+  findings,
+  hypotheses,
   sessionChecks,
   sessionPhases,
   trainingSessions,
@@ -8,6 +11,9 @@ import type { PhaseGateResult, ProgressResult } from "@/modules/methodology/engi
 export type TrainingSessionRecord = typeof trainingSessions.$inferSelect;
 export type SessionPhaseRecord = typeof sessionPhases.$inferSelect;
 export type SessionCheckRecord = typeof sessionChecks.$inferSelect;
+export type FindingRecord = typeof findings.$inferSelect;
+export type HypothesisRecord = typeof hypotheses.$inferSelect;
+export type AttemptRecord = typeof attempts.$inferSelect;
 
 export type SessionPhaseSnapshot = SessionPhaseRecord & {
   checks: SessionCheckRecord[];
@@ -17,6 +23,9 @@ export type TrainingSessionAggregate = {
   session: TrainingSessionRecord;
   phases: SessionPhaseSnapshot[];
   currentPhase: SessionPhaseSnapshot | null;
+  findings: FindingRecord[];
+  hypotheses: HypothesisRecord[];
+  attempts: AttemptRecord[];
   progress: {
     required: ProgressResult;
     coverage: ProgressResult;
@@ -43,7 +52,10 @@ export class TrainingSessionError extends Error {
       | "invalid_input"
       | "invalid_transition"
       | "invalid_state"
-      | "check_not_found",
+      | "check_not_found"
+      | "finding_not_found"
+      | "hypothesis_not_found"
+      | "attempt_not_found",
     message: string,
   ) {
     super(message);
