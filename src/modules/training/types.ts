@@ -7,6 +7,7 @@ import type {
   trainingSessions,
 } from "@/lib/db/schema";
 import type { PhaseGateResult, ProgressResult } from "@/modules/methodology/engine";
+import type { SessionContextWithEvidence } from "../context/types";
 
 export type TrainingSessionRecord = typeof trainingSessions.$inferSelect;
 export type SessionPhaseRecord = typeof sessionPhases.$inferSelect;
@@ -26,6 +27,7 @@ export type TrainingSessionAggregate = {
   findings: FindingRecord[];
   hypotheses: HypothesisRecord[];
   attempts: AttemptRecord[];
+  context: SessionContextWithEvidence[];
   progress: {
     required: ProgressResult;
     coverage: ProgressResult;

@@ -1,4 +1,5 @@
 import * as evidenceRepository from "./evidence-repository";
+import { reconcileFindingContextInTransaction } from "../context/service";
 import {
   createAttemptSchema,
   createFindingSchema,
@@ -6,6 +7,7 @@ import {
   parseEvidenceId,
   parseEvidenceInput,
   requireNonemptyUpdate,
+  validateFindingContextPair,
   updateAttemptSchema,
   updateFindingSchema,
   updateHypothesisSchema,
@@ -21,12 +23,15 @@ import { lockTrainingSession, trainingTransaction } from "./repository";
 export async function createFinding(sessionId: string, input: CreateFindingInput) {
   const id = parseEvidenceId(sessionId);
   const finding = parseEvidenceInput(createFindingSchema, input);
+  validateFindingContextPair(finding);
   return trainingTransaction(async (transaction) => {
     await lockTrainingSession(transaction, id);
-    return evidenceRepository.insertFinding(transaction, {
+    const created = await evidenceRepository.insertFinding(transaction, {
       ...finding,
       trainingSessionId: id,
     });
+    await reconcileFindingContextInTransaction(transaction, created);
+    return created;
   });
 }
 
@@ -41,8 +46,14 @@ export async function updateFinding(
   requireNonemptyUpdate(changes);
   return trainingTransaction(async (transaction) => {
     await lockTrainingSession(transaction, id);
-    await evidenceRepository.lockFinding(transaction, id, ownedFindingId);
-    return evidenceRepository.updateFindingRecord(transaction, id, ownedFindingId, changes);
+    const current = await evidenceRepository.lockFinding(transaction, id, ownedFindingId);
+    validateFindingContextPair({
+      contextKind: changes.contextKind === undefined ? current.contextKind : changes.contextKind,
+      contextValue: changes.contextValue === undefined ? current.contextValue : changes.contextValue,
+    });
+    const updated = await evidenceRepository.updateFindingRecord(transaction, id, ownedFindingId, changes);
+    await reconcileFindingContextInTransaction(transaction, updated);
+    return updated;
   });
 }
 
@@ -52,10 +63,12 @@ export async function confirmFinding(sessionId: string, findingId: string) {
   return trainingTransaction(async (transaction) => {
     await lockTrainingSession(transaction, id);
     const finding = await evidenceRepository.lockFinding(transaction, id, ownedFindingId);
-    if (finding.evidenceState === "confirmed") return finding;
-    return evidenceRepository.updateFindingRecord(transaction, id, ownedFindingId, {
-      evidenceState: "confirmed",
-    });
+    const confirmed = finding.evidenceState === "confirmed" ? finding
+      : await evidenceRepository.updateFindingRecord(transaction, id, ownedFindingId, {
+        evidenceState: "confirmed",
+      });
+    await reconcileFindingContextInTransaction(transaction, confirmed);
+    return confirmed;
   });
 }
 

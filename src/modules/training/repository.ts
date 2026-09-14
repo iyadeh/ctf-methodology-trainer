@@ -1,5 +1,6 @@
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "../../lib/db";
+import { loadSessionContext } from "../context/repository";
 import {
   attempts,
   findings,
@@ -284,6 +285,7 @@ export async function loadTrainingSessionSnapshot(sessionId: string) {
         findings: sessionFindings,
         hypotheses: sessionHypotheses,
         attempts: sessionAttempts,
+        context: await loadSessionContext(transaction, sessionId),
       };
     },
     { isolationLevel: "repeatable read", accessMode: "read only" },

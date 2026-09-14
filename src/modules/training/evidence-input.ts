@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   attemptOutcomeEnum,
   findingEvidenceStateEnum,
+  findingContextKindEnum,
   findingImportanceEnum,
   hypothesisOutcomeEnum,
 } from "../../lib/db/schema";
@@ -16,6 +17,8 @@ const findingFields = {
   category: textField.max(128),
   evidence: textField,
   evidenceState: z.enum(findingEvidenceStateEnum.enumValues),
+  contextKind: z.enum(findingContextKindEnum.enumValues).nullable().optional(),
+  contextValue: textField.max(255).nullable().optional(),
   importance: z.enum(findingImportanceEnum.enumValues),
   source: optionalText,
   notes: optionalText,
@@ -80,5 +83,17 @@ export function parseEvidenceId(value: string): string {
 export function requireNonemptyUpdate(values: object): void {
   if (!Object.values(values).some((value) => value !== undefined)) {
     throw new TrainingSessionError("invalid_input", "Update must include at least one field.");
+  }
+}
+
+export function validateFindingContextPair(finding: {
+  contextKind?: string | null;
+  contextValue?: string | null;
+}): void {
+  if ((finding.contextKind == null) !== (finding.contextValue == null)) {
+    throw new TrainingSessionError(
+      "invalid_input",
+      "contextKind and contextValue must be provided or cleared together.",
+    );
   }
 }

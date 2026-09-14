@@ -70,6 +70,7 @@ export async function updateFindingRecord(
   findingId: string,
   values: Partial<Pick<FindingRecord,
     "title" | "category" | "evidence" | "evidenceState" | "importance" | "source" | "notes"
+    | "contextKind" | "contextValue"
   >>,
 ) {
   const [finding] = await transaction

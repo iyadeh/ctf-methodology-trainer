@@ -15,6 +15,13 @@
       "when": 1789284600501,
       "tag": "0001_ambiguous_talos",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789356141574,
+      "tag": "0002_fair_hardball",
+      "breakpoints": true
     }
   ]
 }

@@ -124,7 +124,7 @@ export async function createTrainingSession({
 export async function getTrainingSession(
   sessionId: string,
 ): Promise<TrainingSessionAggregate> {
-  const { session, phases, checks, findings, hypotheses, attempts } =
+  const { session, phases, checks, findings, hypotheses, attempts, context } =
     await repository.loadTrainingSessionSnapshot(sessionId);
   const phaseSnapshots = phases.map((phase) => ({
     ...phase,
@@ -148,6 +148,7 @@ export async function getTrainingSession(
     findings,
     hypotheses,
     attempts,
+    context,
     progress: {
       required: calculateCoreProgress(methodologyChecks),
       coverage: calculateMethodologyCoverage(methodologyChecks),

@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   check,
+  foreignKey,
   index,
   inet,
   integer,
@@ -9,6 +10,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -55,6 +57,14 @@ export const findingImportanceEnum = pgEnum("finding_importance", [
   "low",
   "medium",
   "high",
+]);
+
+export const findingContextKindEnum = pgEnum("finding_context_kind", [
+  "service", "protocol", "os", "surface", "access",
+]);
+
+export const sessionContextStateEnum = pgEnum("session_context_state", [
+  "active", "inactive",
 ]);
 
 export const hypothesisOutcomeEnum = pgEnum("hypothesis_outcome", [
@@ -275,13 +285,71 @@ export const findings = pgTable(
     category: varchar("category", { length: 128 }).notNull(),
     evidence: text("evidence").notNull(),
     evidenceState: findingEvidenceStateEnum("evidence_state").notNull(),
+    contextKind: findingContextKindEnum("context_kind"),
+    contextValue: varchar("context_value", { length: 255 }),
     importance: findingImportanceEnum("importance").notNull(),
     source: text("source"),
     notes: text("notes"),
     createdAt,
     updatedAt,
   },
-  (table) => [index("findings_training_session_id_index").on(table.trainingSessionId)],
+  (table) => [
+    index("findings_training_session_id_index").on(table.trainingSessionId),
+    unique("findings_session_id_unique").on(table.trainingSessionId, table.id),
+    check("findings_context_pair", sql`
+      (${table.contextKind} is null and ${table.contextValue} is null) or
+      (${table.contextKind} is not null and ${table.contextValue} is not null
+        and length(trim(${table.contextValue})) > 0)
+    `),
+  ],
+);
+
+export const sessionContexts = pgTable(
+  "session_contexts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    trainingSessionId: uuid("training_session_id").notNull()
+      .references(() => trainingSessions.id, { onDelete: "cascade" }),
+    canonicalKey: varchar("canonical_key", { length: 255 }).notNull(),
+    state: sessionContextStateEnum("state").notNull().default("active"),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    unique("session_contexts_session_key_unique").on(table.trainingSessionId, table.canonicalKey),
+  ],
+);
+
+export const contextObservations = pgTable(
+  "context_observations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    trainingSessionId: uuid("training_session_id").notNull(),
+    findingId: uuid("finding_id").notNull(),
+    canonicalKey: varchar("canonical_key", { length: 255 }).notNull(),
+    sourceKind: findingContextKindEnum("source_kind").notNull(),
+    sourceValue: varchar("source_value", { length: 255 }).notNull(),
+    createdAt,
+    retractedAt: timestamp("retracted_at", { withTimezone: true }),
+  },
+  (table) => [
+    foreignKey({
+      name: "context_observations_finding_session_fk",
+      columns: [table.trainingSessionId, table.findingId],
+      foreignColumns: [findings.trainingSessionId, findings.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "context_observations_context_session_fk",
+      columns: [table.trainingSessionId, table.canonicalKey],
+      foreignColumns: [sessionContexts.trainingSessionId, sessionContexts.canonicalKey],
+    }).onDelete("cascade"),
+    uniqueIndex("context_observations_active_finding_key_unique")
+      .on(table.trainingSessionId, table.findingId, table.canonicalKey)
+      .where(sql`${table.retractedAt} is null`),
+    index("context_observations_active_session_key_index")
+      .on(table.trainingSessionId, table.canonicalKey)
+      .where(sql`${table.retractedAt} is null`),
+  ],
 );
 
 export const hypotheses = pgTable(
