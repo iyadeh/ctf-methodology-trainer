@@ -580,24 +580,26 @@ Spoiler Level 0.
 
 MVP menggunakan PTES yang diadaptasi untuk CTF.
 
-Primary phases:
+`Lab Setup / Pre-Engagement` adalah langkah persiapan lab dan target sebelum learner memasuki metodologi Training Session. Langkah ini tetap penting, tetapi bukan `FrameworkPhase` ketujuh dan tidak memiliki Phase Gate.
 
-1. Lab Setup / Pre-Engagement
-2. Reconnaissance / Intelligence Gathering
-3. Threat Modeling
-4. Vulnerability Analysis
-5. Exploitation
-6. Post Exploitation
-7. Reporting
+```text
+Lab Setup / Pre-Engagement (persiapan)
+        ↓
+Training Session dimulai
+        ↓
+Enam FrameworkPhase kanonis
+```
 
-UI utama dapat menampilkan:
+PTES — CTF Adapted menggunakan tepat enam `FrameworkPhase`, dalam urutan berikut:
 
-Reconnaissance
-Threat Modeling
-Vulnerability Analysis
-Exploitation
-Post Exploitation
-Reporting
+1. Reconnaissance
+2. Threat Modeling
+3. Vulnerability Analysis
+4. Exploitation
+5. Post Exploitation
+6. Reporting
+
+Intelligence gathering termasuk pekerjaan Reconnaissance, bukan fase terpisah. Methodology Engine, Phase Gate, dan UI utama bekerja pada enam fase tersebut.
 
 ---
 
@@ -747,19 +749,27 @@ Hidden Graph knows:
 
 HTTP exists.
 
-User has not discovered HTTP.
+User has not confirmed HTTP from learner-visible evidence.
 
 Result:
 
 HTTP playbook remains hidden.
 
-Setelah user mengonfirmasi:
+Port 80 dapat menjadi clue untuk enumeration, tetapi nomor port saja bukan bukti identitas service.
 
-Port 80 → HTTP
+Setelah learner memperoleh dan mengonfirmasi evidence service yang terstruktur:
 
-maka:
+```text
+evidenceState = confirmed
+contextKind = service
+contextValue = HTTP
+        ↓
+Context Engine
+        ↓
+service:http
+```
 
-HTTP playbook may activate.
+HTTP Playbook dapat menjadi applicable melalui Playbook Resolver. Hidden Graph dan nomor port tidak boleh mengonfirmasi service atau mengaktifkan playbook secara otomatis.
 
 Flow:
 
@@ -2426,155 +2436,177 @@ playbook update
 
 # 99. MVP Development Roadmap
 
-## Stage 01 — Project Foundation
+Roadmap ini menentukan **urutan delivery engineering**, bukan mengubah requirement produk pada bagian 1–98 dan 100–103. Stage yang disebut di sini adalah capability yang harus dibangun; status implementasi aktual dicatat pada `docs/IMPLEMENTATION_GUIDE.md`. Nomor Stage mengikuti urutan linear berikut.
 
-- Next.js
-- TypeScript
-- Tailwind
-- shadcn/ui
-- Git
-- AGENTS.md
-- quality scripts
+## Stage 01 — Foundation
+
+- Siapkan Next.js App Router, React, TypeScript, Tailwind CSS, shadcn/ui, pnpm, Git, design token dasar, dan quality scripts.
+- Fondasi ini diperlukan sebelum halaman serta modul domain dibangun.
 
 ## Stage 02 — App Shell
 
-- sidebar
-- navigation
-- layout
-- design tokens
+- Buat root layout, sidebar, top bar, navigasi bersama, aksesibilitas dasar, dan route placeholder.
+- Bergantung pada Foundation.
 
 ## Stage 03 — Dashboard
 
-- recent sessions
-- new training
-- progress overview
+- Buat overview, tindakan New Training, recent sessions, dan tampilan progress menggunakan typed demo data sementara.
+- Bergantung pada App Shell; data persisten dihubungkan pada Stage lanjutan.
 
-## Stage 04 — Database Foundation
+## Stage 04 — Training Sessions
 
-- PostgreSQL
-- Drizzle
-- migrations
+- Buat browser sesi dengan pencarian, filter, sort, status, progress, dan tindakan per sesi memakai typed demo data sementara.
+- Bergantung pada App Shell; read model persisten tersedia setelah Stage 09 dan diintegrasikan pada Stage 14.
 
-## Stage 05 — Core Domain Model
+## Stage 05 — New Training UI
 
-- Framework
-- Playbook
-- TrainingSession
-- Finding
-- Hypothesis
-- Attempt
+- Buat file drop zone PDF/TXT/MD, validasi browser, pemilihan PTES, serta state processing/error/ready sebagai presentasi UI.
+- Upload server dan generation nyata baru dibuat pada Stage 15–20.
 
-## Stage 06 — PTES Methodology Engine
+## Stage 06 — Database Foundation
 
-- phases
-- checks
-- priorities
-- Phase Gate
+- Jalankan PostgreSQL lokal melalui Docker Compose dengan volume persisten; siapkan koneksi Drizzle, environment, dan database scripts.
+- Menjadi prasyarat schema relasional.
 
-## Stage 07 — Training Session Engine
+## Stage 07 — Core Domain Model
 
-- session creation
-- progress
-- persistence
+- Bentuk schema dan migration awal untuk Framework, FrameworkPhase, FrameworkCheck, TrainingSession, SessionPhase, SessionCheck, Finding, Hypothesis, Attempt, Note, dan MethodologyDeviation.
+- Domain tambahan dibuat saat capability terkait diperlukan, bukan sebagai tabel kosong.
 
-## Stage 08 — Dynamic Checklist Engine
+## Stage 08 — PTES Methodology Engine
 
-- checklist composition
-- provenance
-- lifecycle
-- reconciliation
+- Definisikan PTES — CTF Adapted, enam fase UI utama, core checks, semantic keys, priorities, Phase Gate, progress deterministik, dan seed kanonis idempotent.
+- Bergantung pada Framework schema Stage 07; AI tidak menentukan state metodologi.
 
-## Stage 09 — Context Engine
+## Stage 09 — Training Session Core
 
-- observations
-- confirmation
-- context tags
-- normalization
+- Buat session dari snapshot Framework, lifecycle start/pause/resume, target IP, mutation checks, phase transition, override deviation, aggregate read, dan progress.
+- Bergantung pada Stage 08; completion final tetap Stage 23.
 
-## Stage 10 — Playbook Registry
+## Stage 10 — Findings / Hypotheses / Attempts
 
-- HTTP
-- SSH
-- SMB
-- FTP
-- generic fallback
-- Linux
-- Windows
+- Simpan evidence dan reasoning learner, confirmation eksplisit, validasi Zod, ownership antarsesi, serta aggregate read.
+- Bergantung pada Training Session Core; confirmation belum mengaktifkan playbook.
 
-## Stage 11 — Findings / Hypotheses / Attempts
+## Stage 11 — Context Engine
 
-- evidence workflow
-- reasoning workflow
+- Derivasi context kanonis dari confirmed structured user evidence, exact alias normalization, ContextObservation provenance, SessionContext, dan reconciliation multi-sumber.
+- Bergantung pada Findings; hidden facts tidak boleh membuat visible context.
 
-## Stage 12 — Writeup Upload
+## Stage 12 — Playbook Registry
 
-- PDF
-- TXT
-- Markdown
-- text normalization
+- Definisikan typed playbooks dan checks, activation requirements, versioning sederhana, resolver, serta Generic Service Enumeration fallback.
+- Sediakan playbook native HTTP, SSH, SMB, FTP, DNS, SNMP, LDAP, NFS, SMTP, dan Linux/Windows Post Exploitation sesuai lingkup MVP.
+- Bergantung pada canonical context; playbook adalah data metodologi, bukan komponen React.
 
-## Stage 13 — Gemini Foundation
+## Stage 13 — Dynamic Checklist Engine
 
-- server-side client
-- structured generation
-- errors
-- rate limits
+- Komposisikan PTES core, confirmed context, dan playbook menjadi SessionCheck snapshot dengan provenance, activation reason/time, lifecycle, semantic deduplication, dan reconciliation historis.
+- Unknown service memakai Generic Service fallback; perubahan playbook global tidak menulis ulang sesi lama.
+- Siapkan jalur menerima AI contextual extension yang tervalidasi dan `suggested`; generation AI-nya baru hadir pada Stage 22 setelah Gemini serta spoiler policy tersedia.
 
-## Stage 14 — Fact Extraction
+## Stage 14 — Training Session UI Integration
 
-- structured machine facts
-- validation
+- Hubungkan halaman `/training/[sessionId]` dan daftar sesi ke server read/mutation use cases, generic checklist groups, Phase Gate dialog, progress, Findings, Hypotheses, Attempts, dan Notes.
+- Tambahkan persistence/use case Notes yang belum tersedia; UI menampilkan provenance serta perubahan checklist tanpa full page reload.
+- Bergantung pada session, evidence, context, dan dynamic checklist; hidden knowledge tidak dikirim ke client.
 
-## Stage 15 — Hidden Attack Graph
+## Stage 15 — Writeup Upload & Parsing
 
-- nodes
-- edges
-- dependencies
+- Implementasi upload server PDF/TXT/Markdown, validasi type/extension/size/empty content, document parsing, text extraction/normalization, dan metadata writeup.
+- Jangan mengeksekusi konten unggahan; hasil normalized text menjadi input Stage 17.
 
-## Stage 16 — Automated Verification
+## Stage 16 — Gemini Foundation
 
-- confidence
-- conflicts
-- missing steps
+- Siapkan client Gemini server-side, model configuration, structured output contract, validasi Zod, error/429 handling, Retry eksplisit, dan batas secret.
+- Existing sessions serta metodologi/playbook tetap berguna saat Gemini gagal.
 
-## Stage 17 — AI Contextual Extensions
+## Stage 17 — Fact Extraction
 
-- unknown service suggestions
-- missing playbook suggestions
+- Ekstrak structured machine facts dari normalized writeup: profile, ports/services, vulnerabilities, credentials, dependencies, dan attack path evidence.
+- Validasi Zod serta provenance/source references sebelum menyimpan hidden machine knowledge.
 
-## Stage 18 — Guidance Engine
+## Stage 18 — Hidden Attack Graph
 
-- spoiler policy
-- progressive hints
+- Bentuk AttackGraph, AttackNode, AttackEdge, dependency/branching, spoiler level, dan reference path dari facts tervalidasi.
+- Graph tetap server-side; tidak langsung mengaktifkan visible checklist.
 
-## Stage 19 — AI Mentor
+## Stage 19 — Graph Verification
 
-- contextual chat
-- explain concept
-- hint actions
+- Jalankan Automated Verification terhadap writeup, facts, dan graph: missing steps, unsupported nodes, conflicts, ordering, serta confidence/status.
+- Graph `failed` tidak boleh diam-diam menghasilkan TrainingSession; verification mendahului orchestration Stage 20.
 
-## Stage 20 — Session Completion
+## Stage 20 — Training Generation Orchestration
 
-- objective
-- reference reveal
+- Orkestrasi parsing, extraction, graph, verification, hidden knowledge storage, dan session creation menjadi GenerationRun berstatus jelas.
+- Terapkan fingerprint/idempotency, retry, generation history, reuse/cache bila sesuai, serta progress/error/ready state nyata.
+- Bahan UI “Machine Profile”, methodology tasks, hints, dan learning resources disiapkan tanpa membuka solution ke browser.
 
-## Stage 21 — Session Review
+## Stage 21 — Guidance / Spoiler Engine
 
-- user path
-- reference path
-- deterministic metrics
-- narrative review
+- Implementasikan spoiler levels 0–6, context minimization, guidance policy, dan pemilihan hanya hidden graph fragment yang boleh terlihat.
+- Metodologi tetap menentukan state; hint tidak membuat Finding confirmed atau check completed.
+- Menjadi prasyarat AI Mentor dan extension yang spoiler-safe.
 
-## Stage 22 — Reliability & Polish
+## Stage 22 — AI Mentor / Hints
 
-- accessibility
-- responsive behavior
-- loading states
-- error states
-- security review
-- tests
+- Sediakan AI Mentor, contextual question, concept explanation, progressive hints, explicit escalation, serta Hint records/counters.
+- AI contextual playbook extension dari confirmed visible context melewati Zod dan spoiler policy; semua AI-generated checks default `suggested` dan tidak memblokir Phase Gate.
+- Tangani kegagalan/rate limit tanpa merusak sesi yang sudah ada.
 
----
+## Stage 23 — Session Completion
+
+- Sediakan manual completion confirmation, objective evidence, timestamp/state selesai, dan penguncian assessment sesuai aturan produk.
+- Reveal Reference Path hanya setelah completion; sebelum itu path tidak dirender, dipreload, atau dikirim ke browser.
+- Bergantung pada validated hidden graph dan spoiler boundary.
+
+## Stage 24 — Session Review
+
+- Rekonstruksi User Path dari learner records, bandingkan dengan Reference Path setelah completion, hitung deterministic methodology/review metrics, hint/reveal/override counts, dan tampilkan improvement feedback.
+- AI boleh membantu narrative review, bukan membuat angka atau menolak alternative valid path.
+
+## Stage 25 — Knowledge Base
+
+- Buat halaman referensi yang menggunakan Playbook Registry sebagai satu sumber konten runtime dan pembelajaran.
+- Search/category/detail UI tidak menduplikasi definisi playbook secara manual.
+
+## Stage 26 — Methodology Page
+
+- Buat halaman referensi PTES yang merender Framework/FrameworkPhase/FrameworkCheck yang sama dengan Training Engine.
+- Konten reference tidak mengubah SessionCheck historis.
+
+## Stage 27 — Settings
+
+- Sediakan pengaturan framework default, spoiler/hint behavior, Gemini model/status, tampilan/density/reduced motion, serta data/storage actions.
+- API key tetap di environment server; operasi destruktif membutuhkan confirmation.
+
+## Stage 28 — Reliability / Security / Polish
+
+- Perkuat accessibility, responsive behavior, loading/empty/error/retry state, upload/AI failure handling, test penting, performance, security review, secret/hidden-data boundary, dan graceful AI degradation.
+- Quality dan keamanan dasar tetap dijaga sejak Stage awal; tahap ini menguji keseluruhan alur.
+
+## Stage 29 — MVP Acceptance
+
+- Verifikasi end-to-end MVP Success Criteria (bagian 95), Architecture Acceptance Criteria (bagian 96), dan Core Product Rules (bagian 103).
+- Buktikan unknown-service fallback serta penambahan playbook tanpa komponen frontend baru; hidden facts tidak mengaktifkan checklist; AI Suggested tidak memblokir gate; snapshot history stabil; sesi lama tetap berguna saat Gemini gagal; progress/review deterministik; Reference Path baru terbuka setelah completion; session persisten setelah restart.
+
+### Keterlacakan capability yang digabung
+
+| Capability produk | Stage delivery |
+| --- | --- |
+| Generic Service fallback dan Playbook Resolver | 12; aktivasi/snapshot pada 13 |
+| Checklist provenance, lifecycle, reconciliation, spoiler-safe activation | 13; UI pada 14 |
+| Notes use case dan UI | 14 |
+| Writeup parsing serta normalized text | 15 |
+| Structured Gemini output dan Zod | 16; Fact Extraction pada 17 |
+| Hidden Attack Graph dan Automated Verification | 18–19 |
+| GenerationRun, fingerprint, retry, serta generation history | 20 |
+| Guidance policy dan spoiler levels | 21 |
+| AI Contextual Playbook Extension, progressive hints, AI Mentor | 22 |
+| Session Completion dan Reference Path Reveal | 23 |
+| User Path, deterministic metrics, serta Session Review | 24 |
+| Reusable Knowledge Base, Methodology Page, Settings | 25–27 |
+| Accessibility, reliability, security review, dan MVP acceptance | 28–29 |
 
 # 100. Future Features
 
