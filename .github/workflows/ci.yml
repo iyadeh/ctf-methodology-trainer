@@ -12,6 +12,24 @@ permissions:
 jobs:
   checks:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: ctf_trainer
+          POSTGRES_PASSWORD: ctf_trainer_local
+          POSTGRES_DB: ctf_methodology
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://ctf_trainer:ctf_trainer_local@localhost:5432/ctf_methodology
+
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -38,4 +56,8 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      - run: pnpm db:check
+      - run: pnpm db:migrate
+      - run: pnpm db:seed
+      - run: pnpm test:db
       - run: pnpm build
