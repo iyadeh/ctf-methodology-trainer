@@ -1,0 +1,1 @@
+ALTER TYPE "public"."finding_context_kind" ADD VALUE 'technology';

@@ -8,10 +8,10 @@ describe("context normalization", () => {
     ["service", "Apache HTTP Server", ["service:http"]],
     ["service", "nginx", ["service:http"]],
     ["service", "Microsoft-IIS", ["service:http"]],
-    ["service", "https", ["protocol:https", "service:http"]],
-    ["service", "ssl/http", ["protocol:https", "service:http"]],
-    ["service", "Apache over TLS", ["protocol:https", "service:http"]],
-    ["protocol", "HTTPS", ["protocol:https", "service:http"]],
+    ["service", "https", ["encrypted:true", "protocol:https", "service:http"]],
+    ["service", "ssl/http", ["encrypted:true", "protocol:https", "service:http"]],
+    ["service", "Apache over TLS", ["encrypted:true", "protocol:https", "service:http"]],
+    ["protocol", "HTTPS", ["encrypted:true", "protocol:https", "service:http"]],
     ["service", "OpenSSH", ["service:ssh"]],
     ["service", "SSH", ["service:ssh"]],
     ["service", "Samba", ["service:smb"]],
@@ -22,6 +22,12 @@ describe("context normalization", () => {
     ["os", "Microsoft Windows", ["os:windows"]],
     ["os", "Windows", ["os:windows"]],
     ["surface", "authentication", ["surface:authentication"]],
+    ["surface", "web", ["surface:web"]],
+    ["surface", "file sharing", ["surface:file-sharing"]],
+    ["surface", "rest api", ["surface:api"]],
+    ["technology", "WordPress", ["technology:wordpress"]],
+    ["technology", "wp", ["technology:wordpress"]],
+    ["technology", "drupal", ["technology:drupal"]],
     ["access", "local shell", ["access:local-shell"]],
     ["access", "remote-shell", ["access:remote-shell"]],
   ] as [ContextKind, string, string[]][])("normalizes %s / %s", (kind, value, expected) => {
@@ -53,7 +59,7 @@ describe("context derivation", () => {
     expect(deriveContextFromFinding({ evidenceState: "confirmed", contextKind: "service", contextValue: "HTTP" }))
       .toEqual(["service:http"]);
     expect(deriveContextFromFinding({ evidenceState: "confirmed", contextKind: "service", contextValue: "HTTPS" }))
-      .toEqual(["protocol:https", "service:http"]);
+      .toEqual(["encrypted:true", "protocol:https", "service:http"]);
     expect(deriveContextFromFinding({ evidenceState: "confirmed", contextKind: null, contextValue: null }))
       .toEqual([]);
   });

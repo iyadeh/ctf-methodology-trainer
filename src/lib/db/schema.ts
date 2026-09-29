@@ -60,7 +60,7 @@ export const findingImportanceEnum = pgEnum("finding_importance", [
 ]);
 
 export const findingContextKindEnum = pgEnum("finding_context_kind", [
-  "service", "protocol", "os", "surface", "access",
+  "service", "protocol", "os", "surface", "access", "technology",
 ]);
 
 export const sessionContextStateEnum = pgEnum("session_context_state", [

@@ -14,8 +14,8 @@ type NormalizationRule = {
 // Exact aliases only. Version banners and prose must be recorded separately.
 const normalizationRules: readonly NormalizationRule[] = [
   { kind: "service", aliases: ["http", "apache", "apache http server", "nginx", "microsoft-iis"], keys: ["service:http"] },
-  { kind: "service", aliases: ["https", "ssl/http", "apache over tls"], keys: ["service:http", "protocol:https"] },
-  { kind: "protocol", aliases: ["https", "ssl/http"], keys: ["service:http", "protocol:https"] },
+  { kind: "service", aliases: ["https", "ssl/http", "apache over tls"], keys: ["service:http", "protocol:https", "encrypted:true"] },
+  { kind: "protocol", aliases: ["https", "ssl/http"], keys: ["service:http", "protocol:https", "encrypted:true"] },
   { kind: "protocol", aliases: ["http"], keys: ["service:http"] },
   { kind: "service", aliases: ["ssh", "openssh"], keys: ["service:ssh"] },
   { kind: "service", aliases: ["smb", "microsoft smb", "samba"], keys: ["service:smb"] },
@@ -27,7 +27,13 @@ const normalizationRules: readonly NormalizationRule[] = [
   { kind: "service", aliases: ["smtp"], keys: ["service:smtp"] },
   { kind: "os", aliases: ["linux", "gnu/linux"], keys: ["os:linux"] },
   { kind: "os", aliases: ["windows", "microsoft windows"], keys: ["os:windows"] },
-  { kind: "surface", aliases: ["authentication"], keys: ["surface:authentication"] },
+  { kind: "surface", aliases: ["authentication", "auth"], keys: ["surface:authentication"] },
+  { kind: "surface", aliases: ["web", "web application", "web surface"], keys: ["surface:web"] },
+  { kind: "surface", aliases: ["file-sharing", "file sharing"], keys: ["surface:file-sharing"] },
+  { kind: "surface", aliases: ["api", "rest api", "rest-api"], keys: ["surface:api"] },
+  { kind: "technology", aliases: ["wordpress", "wp"], keys: ["technology:wordpress"] },
+  { kind: "technology", aliases: ["drupal"], keys: ["technology:drupal"] },
+  { kind: "technology", aliases: ["joomla"], keys: ["technology:joomla"] },
   { kind: "access", aliases: ["local-shell", "local shell"], keys: ["access:local-shell"] },
   { kind: "access", aliases: ["remote-shell", "remote shell"], keys: ["access:remote-shell"] },
 ];
