@@ -60,14 +60,18 @@ describe("Context Engine PostgreSQL integration", () => {
     expect(await getSessionContext(sessionId)).toEqual([]);
     await confirmFinding(sessionId, finding.id);
     const context = await getSessionContext(sessionId);
-    expect(context.map((entry) => entry.canonicalKey)).toEqual(["protocol:https", "service:http"]);
+    expect(context.map((entry) => entry.canonicalKey)).toEqual([
+      "encrypted:true",
+      "protocol:https",
+      "service:http",
+    ]);
     expect(context.every((entry) => entry.observations.length === 1)).toBe(true);
     expect(context[0].observations[0]).toMatchObject({
       findingId: finding.id, sourceKind: "service", sourceValue: "HTTPS", retractedAt: null,
     });
     await confirmFinding(sessionId, finding.id);
     await reconcileFindingContext(sessionId, finding.id);
-    expect(await observations(sessionId)).toHaveLength(2);
+    expect(await observations(sessionId)).toHaveLength(3);
     expect(await getSessionContext(sessionId)).toEqual(context);
   });
 
