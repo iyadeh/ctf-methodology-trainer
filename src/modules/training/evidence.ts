@@ -1,5 +1,6 @@
 import * as evidenceRepository from "./evidence-repository";
 import { reconcileFindingContextInTransaction } from "../context/service";
+import { reconcileSessionChecklistInTransaction } from "../checklist/service";
 import {
   createAttemptSchema,
   createFindingSchema,
@@ -31,6 +32,7 @@ export async function createFinding(sessionId: string, input: CreateFindingInput
       trainingSessionId: id,
     });
     await reconcileFindingContextInTransaction(transaction, created);
+    await reconcileSessionChecklistInTransaction(transaction, id);
     return created;
   });
 }
@@ -53,6 +55,7 @@ export async function updateFinding(
     });
     const updated = await evidenceRepository.updateFindingRecord(transaction, id, ownedFindingId, changes);
     await reconcileFindingContextInTransaction(transaction, updated);
+    await reconcileSessionChecklistInTransaction(transaction, id);
     return updated;
   });
 }
@@ -68,6 +71,7 @@ export async function confirmFinding(sessionId: string, findingId: string) {
         evidenceState: "confirmed",
       });
     await reconcileFindingContextInTransaction(transaction, confirmed);
+    await reconcileSessionChecklistInTransaction(transaction, id);
     return confirmed;
   });
 }
