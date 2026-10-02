@@ -2,6 +2,7 @@ import type {
   attempts,
   findings,
   hypotheses,
+  notes,
   sessionChecks,
   sessionPhases,
   trainingSessions,
@@ -15,6 +16,7 @@ export type SessionCheckRecord = typeof sessionChecks.$inferSelect;
 export type FindingRecord = typeof findings.$inferSelect;
 export type HypothesisRecord = typeof hypotheses.$inferSelect;
 export type AttemptRecord = typeof attempts.$inferSelect;
+export type NoteRecord = typeof notes.$inferSelect;
 
 export type SessionPhaseSnapshot = SessionPhaseRecord & {
   checks: SessionCheckRecord[];
@@ -27,6 +29,7 @@ export type TrainingSessionAggregate = {
   findings: FindingRecord[];
   hypotheses: HypothesisRecord[];
   attempts: AttemptRecord[];
+  notes: NoteRecord[];
   context: SessionContextWithEvidence[];
   progress: {
     required: ProgressResult;
@@ -57,7 +60,8 @@ export class TrainingSessionError extends Error {
       | "check_not_found"
       | "finding_not_found"
       | "hypothesis_not_found"
-      | "attempt_not_found",
+      | "attempt_not_found"
+      | "note_not_found",
     message: string,
   ) {
     super(message);

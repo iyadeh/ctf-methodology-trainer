@@ -164,7 +164,7 @@ function ContinueTrainingCard() {
 
         <div className="mt-auto flex flex-wrap gap-2 pt-6">
           <Link
-            href="/training"
+            href={`/training/${session.id}`}
             aria-label={`Resume ${session.name} training`}
             className={buttonVariants({ size: "lg" })}
           >
@@ -172,7 +172,7 @@ function ContinueTrainingCard() {
             Resume
           </Link>
           <Link
-            href="/training"
+            href={`/training/${session.id}`}
             aria-label={`View ${session.name} training details`}
             className={buttonVariants({ variant: "outline", size: "lg" })}
           >

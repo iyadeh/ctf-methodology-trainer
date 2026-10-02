@@ -10,6 +10,7 @@ export type DashboardSessionSummary = {
 
 type DashboardDemoData = {
   featuredSession: {
+    id: string;
     completedPhases: number;
     description: string;
     name: string;
@@ -33,6 +34,7 @@ type DashboardDemoData = {
 // UI-only fixtures. Replace this object with a dashboard view model when persistence exists.
 export const dashboardDemoData = {
   featuredSession: {
+    id: "5c495346-fd7d-4614-a3b3-943150a413c6",
     name: "Friendly",
     description:
       "A beginner-friendly machine focused on basic enumeration and common misconfigurations.",
@@ -44,7 +46,7 @@ export const dashboardDemoData = {
   },
   recentSessions: [
     {
-      id: "friendly",
+      id: "5c495346-fd7d-4614-a3b3-943150a413c6",
       name: "Friendly",
       lastAccessed: "Last accessed 12 minutes ago",
       status: "In Progress",

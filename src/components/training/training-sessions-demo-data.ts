@@ -54,7 +54,7 @@ export const trainingSessionsDemoData: TrainingSessionsDemoData = {
   ],
   sessions: [
     {
-      id: "friendly",
+      id: "5c495346-fd7d-4614-a3b3-943150a413c6",
       name: "Friendly",
       description:
         "A beginner-friendly machine focused on basic enumeration and common misconfigurations.",

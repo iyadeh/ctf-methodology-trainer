@@ -9,6 +9,7 @@ import {
   frameworks,
   hypotheses,
   methodologyDeviations,
+  notes,
   sessionChecks,
   sessionPhases,
   trainingSessions,
@@ -277,6 +278,11 @@ export async function loadTrainingSessionSnapshot(sessionId: string) {
         .from(attempts)
         .where(eq(attempts.trainingSessionId, sessionId))
         .orderBy(asc(attempts.createdAt), asc(attempts.id));
+      const sessionNotes = await transaction
+        .select()
+        .from(notes)
+        .where(eq(notes.trainingSessionId, sessionId))
+        .orderBy(asc(notes.createdAt), asc(notes.id));
 
       return {
         session,
@@ -285,6 +291,7 @@ export async function loadTrainingSessionSnapshot(sessionId: string) {
         findings: sessionFindings,
         hypotheses: sessionHypotheses,
         attempts: sessionAttempts,
+        notes: sessionNotes,
         context: await loadSessionContext(transaction, sessionId),
       };
     },

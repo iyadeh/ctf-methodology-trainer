@@ -21,6 +21,15 @@ import {
 } from "./evidence-input";
 import { lockTrainingSession, trainingTransaction } from "./repository";
 
+export type {
+  CreateAttemptInput,
+  CreateFindingInput,
+  CreateHypothesisInput,
+  UpdateAttemptInput,
+  UpdateFindingInput,
+  UpdateHypothesisInput,
+};
+
 export async function createFinding(sessionId: string, input: CreateFindingInput) {
   const id = parseEvidenceId(sessionId);
   const finding = parseEvidenceInput(createFindingSchema, input);

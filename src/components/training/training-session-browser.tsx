@@ -120,7 +120,7 @@ function TrainingSessionRow({ session }: { session: TrainingSessionDemo }) {
 
           <div className="flex items-center justify-end gap-1.5">
             <Link
-              href="/training"
+              href={`/training/${session.id}`}
               aria-label={`${session.action} ${session.name} training`}
               className={cn(
                 buttonVariants({
