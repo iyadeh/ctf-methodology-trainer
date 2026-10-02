@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run src/modules",
+    "test:graph": "vitest run tests/attack-graph/demo.test.ts",
     "test:db": "vitest run tests/db",
     "db:up": "docker compose --env-file .env.local up -d",
     "db:down": "docker compose --env-file .env.local down",
