@@ -5,7 +5,7 @@ import { GeminiConfigError } from "./errors";
 import type { MultimodalPart } from "./types";
 
 export const DEFAULT_GEMINI_MODEL =
-  process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  process.env.GEMINI_MODEL || "gemini-3.5-flash";
 
 let cachedClient: GoogleGenAI | null = null;
 

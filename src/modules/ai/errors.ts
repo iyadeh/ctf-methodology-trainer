@@ -66,7 +66,7 @@ export function classifyGeminiError(error: unknown): Error {
     lower.includes("rate limit")
   ) {
     return new GeminiRateLimitError(
-      "Gemini quota or rate limit exceeded. Please retry in a few moments.",
+      `Gemini quota or rate limit exceeded: ${message}`,
     );
   }
 
@@ -81,7 +81,7 @@ export function classifyGeminiError(error: unknown): Error {
     lower.includes("timeout")
   ) {
     return new GeminiUnavailableError(
-      "Gemini API is currently unreachable. Please check your network connection.",
+      `Gemini service temporarily unavailable: ${message}`,
     );
   }
 

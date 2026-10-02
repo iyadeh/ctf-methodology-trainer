@@ -1,5 +1,7 @@
 "use server";
 
+import { isGeminiConfigured } from "@/modules/ai";
+import { extractMachineFacts, type ExtractedMachineFacts } from "@/modules/facts";
 import { parseWriteupFile } from "@/modules/writeups/parser";
 import {
   WriteupParseError,
@@ -7,12 +9,17 @@ import {
 } from "@/modules/writeups/types";
 
 export type UploadWriteupActionResult =
-  | { ok: true; metadata: WriteupMetadataSummary }
+  | {
+      ok: true;
+      metadata: WriteupMetadataSummary;
+      facts?: ExtractedMachineFacts;
+      aiWarning?: string;
+    }
   | { ok: false; error: string; code: string };
 
 /**
- * Server Action to validate and parse an uploaded writeup file.
- * Returns safe metadata summary; normalized writeup content remains securely on the server.
+ * Server Action to validate, parse an uploaded writeup file,
+ * and extract structured machine facts if Gemini API is configured.
  */
 export async function uploadWriteupAction(
   formData: FormData,
@@ -37,6 +44,20 @@ export async function uploadWriteupAction(
       mimeType: file.type || null,
     });
 
+    let facts: ExtractedMachineFacts | undefined;
+    let aiWarning: string | undefined;
+
+    if (isGeminiConfigured()) {
+      try {
+        facts = await extractMachineFacts({
+          writeupText: parsed.normalizedText,
+        });
+      } catch (aiErr) {
+        console.error("[uploadWriteupAction] AI Fact Extraction Error:", aiErr);
+        aiWarning = aiErr instanceof Error ? aiErr.message : "AI fact extraction failed.";
+      }
+    }
+
     return {
       ok: true,
       metadata: {
@@ -48,6 +69,8 @@ export async function uploadWriteupAction(
         wordCount: parsed.wordCount,
         pageCount: parsed.pageCount,
       },
+      facts,
+      aiWarning,
     };
   } catch (error) {
     if (error instanceof WriteupParseError) {

@@ -133,7 +133,7 @@ describe("Structured AI Generation & Zod Validation", () => {
 
       expect(result).toEqual({ summary: "Enumeration complete", score: 95 });
       expect(mockGenerateContent).toHaveBeenCalledWith({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.5-flash",
         contents: ["Analyze this Nmap output"],
         config: {
           responseMimeType: "application/json",

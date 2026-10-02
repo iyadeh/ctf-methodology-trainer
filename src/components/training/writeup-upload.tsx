@@ -20,6 +20,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { uploadWriteupAction } from "@/app/training/new/actions";
 import type { WriteupMetadataSummary } from "@/modules/writeups";
+import type { ExtractedMachineFacts } from "@/modules/facts";
+import { ExtractedFactsView } from "./extracted-facts-view";
 
 const maxWriteupBytes = 10_000_000;
 
@@ -47,6 +49,8 @@ export function WriteupUpload({ children }: { children: ReactNode }) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [parsedMetadata, setParsedMetadata] = useState<WriteupMetadataSummary | null>(null);
+  const [extractedFacts, setExtractedFacts] = useState<ExtractedMachineFacts | null>(null);
+  const [aiWarning, setAiWarning] = useState<string | null>(null);
   const [preview, setPreview] = useState<GenerationPreviewState | null>(null);
 
   function selectFiles(files: FileList) {
@@ -54,6 +58,8 @@ export function WriteupUpload({ children }: { children: ReactNode }) {
     setError(validationError);
     setPreview(null);
     setParsedMetadata(null);
+    setExtractedFacts(null);
+    setAiWarning(null);
     setSelectedFile(validationError ? null : files[0]);
     if (inputRef.current) inputRef.current.value = "";
   }
@@ -63,6 +69,8 @@ export function WriteupUpload({ children }: { children: ReactNode }) {
     setError(null);
     setPreview(null);
     setParsedMetadata(null);
+    setExtractedFacts(null);
+    setAiWarning(null);
     if (inputRef.current) inputRef.current.value = "";
     browseRef.current?.focus();
   }
@@ -79,6 +87,7 @@ export function WriteupUpload({ children }: { children: ReactNode }) {
     if (!selectedFile) return;
 
     setError(null);
+    setAiWarning(null);
     setPreview("processing");
 
     startTransition(async () => {
@@ -92,6 +101,8 @@ export function WriteupUpload({ children }: { children: ReactNode }) {
         setPreview("failed");
       } else {
         setParsedMetadata(result.metadata);
+        setExtractedFacts(result.facts || null);
+        setAiWarning(result.aiWarning || null);
         setPreview("ready");
       }
     });
@@ -266,25 +277,30 @@ export function WriteupUpload({ children }: { children: ReactNode }) {
                 {isPending ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    Parsing & Validating Writeup...
+                    Extracting Facts with Gemini AI...
                   </>
                 ) : (
                   <>
-                    Parse & Prepare Training
+                    Parse & Extract Machine Facts
                     <ArrowRight aria-hidden="true" strokeWidth={1.75} />
                   </>
                 )}
               </Button>
-              <p id="generation-preview-notice" className="mt-2 text-xs leading-5 text-muted-foreground">
+              <div id="generation-preview-notice" className="mt-2 space-y-1 text-xs leading-5 text-muted-foreground">
                 {parsedMetadata ? (
-                  <span className="text-primary flex items-center gap-1">
+                  <p className="text-primary flex items-center gap-1">
                     <CheckCircle2 className="size-3.5 inline" />
-                    Document ready. Ready for AI Fact Extraction (Stage 16 & 17).
-                  </span>
+                    Document parsed and normalized.
+                  </p>
                 ) : (
-                  "Upload a writeup to extract normalized text and verify document integrity before training generation."
+                  <p>Upload a writeup to extract normalized text and generate structured machine facts.</p>
                 )}
-              </p>
+                {aiWarning && (
+                  <p className="text-amber-400 font-mono text-[11px]">
+                    Warning: {aiWarning}
+                  </p>
+                )}
+              </div>
             </div>
           </form>
         </CardContent>
@@ -292,7 +308,13 @@ export function WriteupUpload({ children }: { children: ReactNode }) {
 
       {children}
 
-      {preview && (
+      {extractedFacts && (
+        <div className="xl:col-span-2">
+          <ExtractedFactsView facts={extractedFacts} />
+        </div>
+      )}
+
+      {preview && !extractedFacts && (
         <GenerationPreview
           state={preview}
           onChange={setPreview}
