@@ -615,3 +615,31 @@ export const graphVerifications = pgTable(
   ],
 );
 
+export const hintRecords = pgTable(
+  "hint_records",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    trainingSessionId: uuid("training_session_id")
+      .notNull()
+      .references(() => trainingSessions.id, { onDelete: "cascade" }),
+    spoilerLevel: integer("spoiler_level").default(0).notNull(),
+    spoilerLevelName: varchar("spoiler_level_name", { length: 32 }).notNull(),
+    phaseKey: varchar("phase_key", { length: 64 }).notNull(),
+    mode: varchar("mode", { length: 64 }).default("methodology_hint").notNull(),
+    userQuery: text("user_query"),
+    content: text("content").notNull(),
+    conceptExplanation: text("concept_explanation"),
+    recommendedTechnique: text("recommended_technique"),
+    suggestedToolsJson: text("suggested_tools_json"),
+    penaltyPoints: integer("penalty_points").default(0).notNull(),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("hint_records_training_session_id_index").on(table.trainingSessionId),
+    index("hint_records_created_at_index").on(table.createdAt),
+    index("hint_records_spoiler_level_index").on(table.spoilerLevel),
+  ],
+);
+
+

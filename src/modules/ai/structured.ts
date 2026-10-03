@@ -88,7 +88,9 @@ export async function generateStructuredAI<T>(
 
   const candidateModels = [
     model,
-    ...(model === "gemini-3.8-flash" ? ["gemini-3.5-flash"] : ["gemini-3.8-flash"]),
+    ...(model === "gemini-3.5-flash-lite"
+      ? ["gemini-flash-latest", "gemini-3.8-flash"]
+      : ["gemini-3.5-flash-lite", "gemini-flash-latest"]),
   ];
 
   let lastError: unknown;

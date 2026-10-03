@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getTrainingSession } from "@/modules/training/service";
 import { TrainingSessionError, type TrainingSessionAggregate } from "@/modules/training/types";
+import { getSessionHintsAndMetrics } from "@/modules/mentor/service";
 import { SessionWorkspace } from "@/components/training/session/session-workspace";
 
 interface SessionPageProps {
@@ -35,5 +36,13 @@ export default async function TrainingSessionPage({ params }: SessionPageProps) 
     throw error;
   }
 
-  return <SessionWorkspace aggregate={aggregate} />;
+  const { hints, metrics } = await getSessionHintsAndMetrics(sessionId);
+
+  return (
+    <SessionWorkspace
+      aggregate={aggregate}
+      initialHints={hints}
+      initialMetrics={metrics}
+    />
+  );
 }

@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { CheckSquare, FileText, Lightbulb, Search, Tag } from "lucide-react";
+import { CheckSquare, Compass, FileText, Lightbulb, Search, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TrainingSessionAggregate } from "@/modules/training/types";
+import type { HintMetrics, HintRecord } from "@/modules/mentor/types";
 import { SessionHeader } from "./session-header";
 import { PhaseStepper } from "./phase-stepper";
 import { ChecklistSection } from "./checklist-section";
@@ -11,14 +12,21 @@ import { FindingsPanel } from "./findings-panel";
 import { HypothesesPanel } from "./hypotheses-panel";
 import { NotesPanel } from "./notes-panel";
 import { ContextPanel } from "./context-panel";
+import { MentorPanel } from "./mentor-panel";
 
 interface SessionWorkspaceProps {
   readonly aggregate: TrainingSessionAggregate;
+  readonly initialHints?: readonly HintRecord[];
+  readonly initialMetrics?: HintMetrics;
 }
 
-type TabType = "checklist" | "findings" | "hypotheses" | "notes" | "context";
+type TabType = "checklist" | "findings" | "hypotheses" | "notes" | "context" | "mentor";
 
-export function SessionWorkspace({ aggregate }: SessionWorkspaceProps) {
+export function SessionWorkspace({
+  aggregate,
+  initialHints = [],
+  initialMetrics,
+}: SessionWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<TabType>("checklist");
 
   const { session, phases, currentPhase, findings, hypotheses, attempts, notes, context } =
@@ -35,6 +43,7 @@ export function SessionWorkspace({ aggregate }: SessionWorkspaceProps) {
     { id: "hypotheses", label: "Hypotheses", count: hypotheses.length, icon: Lightbulb },
     { id: "notes", label: "Notes", count: notes.length, icon: FileText },
     { id: "context", label: "Context", count: context.length, icon: Tag },
+    { id: "mentor", label: "AI Mentor", count: initialHints.length > 0 ? initialHints.length : undefined, icon: Compass },
   ];
 
   return (
@@ -109,6 +118,16 @@ export function SessionWorkspace({ aggregate }: SessionWorkspaceProps) {
           <NotesPanel sessionId={session.id} notes={notes} />
         )}
         {activeTab === "context" && <ContextPanel context={context} />}
+        {activeTab === "mentor" && (
+          <MentorPanel
+            sessionId={session.id}
+            currentPhaseName={currentPhase?.name || "Reconnaissance"}
+            currentPhaseKey={currentPhase?.semanticKey || "reconnaissance"}
+            activeCheckTitle={currentPhase?.checks.find((c) => c.status === "active")?.title}
+            initialHints={initialHints}
+            initialMetrics={initialMetrics}
+          />
+        )}
       </main>
     </div>
   );

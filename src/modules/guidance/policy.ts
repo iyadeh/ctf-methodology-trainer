@@ -113,15 +113,20 @@ export function filterHiddenContextBySpoilerLevel(
 
   // Find candidate nodes
   const candidateNodes = graph.nodes.filter((node) => {
+    if (spoilerLevel === 6) {
+      return true; // Full reveal: all nodes in the reference graph are allowed
+    }
     const nodeRank = PHASE_ORDER[node.phase] || 1;
-    // Allow nodes up to the current phase + 1 next phase step if at level 5 or 6
-    const maxAllowedRank = spoilerLevel >= 5 ? currentRank + 1 : currentRank;
+    // Allow nodes up to the current phase + 1 next phase step if at level 5
+    const maxAllowedRank = spoilerLevel === 5 ? currentRank + 1 : currentRank;
     return nodeRank <= maxAllowedRank && node.spoilerLevel <= spoilerLevel;
   });
 
   // Transform and redact node content based on spoiler level
   const allowedNodes: AllowedHiddenNode[] = candidateNodes.map((node) => {
-    let summary = `${node.title}. ${node.description}`;
+    let summary = node.description.toLowerCase().startsWith(node.title.toLowerCase())
+      ? node.description
+      : `${node.title}. ${node.description}`;
     const tools = node.metadata?.toolsUsed ? [...node.metadata.toolsUsed] : undefined;
 
     if (spoilerLevel === 4) {

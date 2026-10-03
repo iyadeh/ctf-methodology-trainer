@@ -103,6 +103,12 @@ export function prepareGuidancePromptContext(
 
   const levelName = SPOILER_LEVEL_NAMES[spoilerLevel];
 
+  const allowedKnowledgeSection =
+    filteredHiddenContext.allowedNodes.length > 0
+      ? `\n\nALLOWED MACHINE KNOWLEDGE (Filtered according to Spoiler Level ${spoilerLevel} - You may refer to or reveal these details):
+${filteredHiddenContext.allowedNodes.map((n) => `- [${n.phase.toUpperCase()}] ${n.title}: ${n.summary}`).join("\n")}`
+      : `\n\nNOTE: No machine attack graph or writeup details are available for this target or level. Base guidance strictly on methodology.`;
+
   const systemInstruction = `You are the CTF Methodology Trainer Mentor.
 Your role is to guide cybersecurity learners through structured penetration-testing methodology without spoiling solutions prematurely.
 
@@ -111,13 +117,22 @@ CORE INVARIANT:
 
 CURRENT SPOILER LEVEL: ${spoilerLevel} (${levelName.toUpperCase()})
 GUIDANCE SCOPE:
-${filteredHiddenContext.guidanceScope}
+${filteredHiddenContext.guidanceScope}${allowedKnowledgeSection}
 
 RULES:
 1. Method before exploit: Prioritize enumeration and methodical reasoning over blind exploitation.
-2. Under no circumstance provide details exceeding Spoiler Level ${spoilerLevel}.
-3. If the user asks for direct answers, steer them to the relevant methodology phase and next step.
-4. Keep answers concise, technical, and actionable. Avoid fluff and overly verbose greetings.`;
+2. Under no circumstance provide details exceeding Spoiler Level ${spoilerLevel} or outside the allowed machine knowledge above.
+3. If the user asks for direct answers:
+   - At Levels 0-3: Provide only methodology, concepts, techniques, or tools. Do not reveal machine secrets.
+   - At Level 4: Give machine context from allowed knowledge above, keeping passwords/flags redacted.
+   - At Level 5: Give partial attack path guidance from allowed knowledge above, keeping passwords/flags redacted.
+   - At Level 6 (Full Reveal): Provide the explicit solution/flag requested from the allowed knowledge above. If no attack graph exists for this machine, explicitly inform the user that this session is a manual practice session with no stored machine solution.
+4. Keep answers concise, technical, and actionable. Avoid fluff and overly verbose greetings.
+5. You MUST return a JSON object with:
+   - "content": (string, required) Your clear, direct, and well-structured markdown answer to the user.
+   - "spoilerLevel": (integer, required) Value ${spoilerLevel}.
+   - "recommendedTechnique": (string, optional)
+   - "suggestedTools": (array of strings, optional)`;
 
   return {
     systemInstruction,

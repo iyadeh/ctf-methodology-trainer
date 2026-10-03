@@ -61,12 +61,40 @@ export const filteredHiddenContextSchema = z.object({
   currentFrontierMilestone: z.string().optional(),
 });
 
-export const guidanceResponseSchema = z.object({
+export const guidanceResponseSchema = z.preprocess((val: unknown) => {
+  if (val && typeof val === "object") {
+    const raw = val as Record<string, unknown>;
+    let content = typeof raw.content === "string" ? raw.content : "";
+
+    if (!content) {
+      if (raw.flag && raw.note) {
+        content = `${String(raw.note)}\n\n**Flag:** \`${String(raw.flag)}\``;
+      } else if (raw.flag) {
+        content = `**Flag:** \`${String(raw.flag)}\`` + (raw.challenge ? ` (${String(raw.challenge)})` : "");
+      } else if (typeof raw.answer === "string") {
+        content = raw.answer;
+      } else if (typeof raw.response === "string") {
+        content = raw.response;
+      } else if (typeof raw.guidance === "string") {
+        content = raw.guidance;
+      } else if (typeof raw.solution === "string") {
+        content = raw.solution;
+      }
+    }
+
+    return {
+      ...raw,
+      content,
+      spoilerLevel: typeof raw.spoilerLevel === "number" ? raw.spoilerLevel : 0,
+    };
+  }
+  return val;
+}, z.object({
   content: z.string().min(1),
   spoilerLevel: spoilerLevelSchema,
   conceptExplanation: z.string().optional(),
   recommendedTechnique: z.string().optional(),
   suggestedTools: z.array(z.string()).optional(),
-});
+}));
 
 export type GuidanceResponseOutput = z.infer<typeof guidanceResponseSchema>;
