@@ -29,6 +29,20 @@
       "when": 1790674650280,
       "tag": "0003_kind_omega_red",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790992485126,
+      "tag": "0004_last_nightmare",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790993943147,
+      "tag": "0005_curious_micromacro",
+      "breakpoints": true
     }
   ]
 }

@@ -3,11 +3,8 @@
 import { useRef, useState, useTransition, type DragEvent, type ReactNode } from "react";
 import {
   ArrowRight,
-  CheckCircle2,
   ChevronDown,
-  FileCheck2,
   FileText,
-  Hash,
   Loader2,
   Upload,
   X,
@@ -15,22 +12,20 @@ import {
 import { GenerationPreview } from "@/components/training/generation-preview";
 import type { GenerationPreviewState } from "@/components/training/generation-preview-data";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { uploadWriteupAction } from "@/app/training/new/actions";
-import type { WriteupMetadataSummary } from "@/modules/writeups";
-import type { ExtractedMachineFacts } from "@/modules/facts";
-import { ExtractedFactsView } from "./extracted-facts-view";
+import { generateTrainingAction } from "@/app/training/new/actions";
 
 const maxWriteupBytes = 10_000_000;
 
 function validateSelection(files: FileList): string | null {
   if (files.length !== 1) return "Choose one writeup at a time.";
   const file = files[0];
-  if (!/\.(pdf|txt|md)$/i.test(file.name)) return "Unsupported format. Choose a PDF, TXT, or Markdown (.md) file.";
+  if (!/\.(pdf|txt|md)$/i.test(file.name))
+    return "Unsupported format. Choose a PDF, TXT, or Markdown (.md) file.";
   if (file.size === 0) return "This file is empty. Choose a writeup with content.";
-  if (file.size > maxWriteupBytes) return "This file exceeds 10 MB. Choose a smaller writeup.";
+  if (file.size > maxWriteupBytes)
+    return "This file exceeds 10 MB. Choose a smaller writeup.";
   return null;
 }
 
@@ -47,19 +42,25 @@ export function WriteupUpload({ children }: { children: ReactNode }) {
   const [isPending, startTransition] = useTransition();
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [sessionName, setSessionName] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [parsedMetadata, setParsedMetadata] = useState<WriteupMetadataSummary | null>(null);
-  const [extractedFacts, setExtractedFacts] = useState<ExtractedMachineFacts | null>(null);
-  const [aiWarning, setAiWarning] = useState<string | null>(null);
   const [preview, setPreview] = useState<GenerationPreviewState | null>(null);
+  const [createdSessionId, setCreatedSessionId] = useState<string | null>(null);
+  const [machineProfile, setMachineProfile] = useState<{
+    name: string;
+    platform: string;
+    os: string;
+    difficulty: string;
+    author?: string;
+    targetIp?: string;
+  } | null>(null);
 
   function selectFiles(files: FileList) {
     const validationError = validateSelection(files);
     setError(validationError);
     setPreview(null);
-    setParsedMetadata(null);
-    setExtractedFacts(null);
-    setAiWarning(null);
+    setCreatedSessionId(null);
+    setMachineProfile(null);
     setSelectedFile(validationError ? null : files[0]);
     if (inputRef.current) inputRef.current.value = "";
   }
@@ -68,9 +69,8 @@ export function WriteupUpload({ children }: { children: ReactNode }) {
     setSelectedFile(null);
     setError(null);
     setPreview(null);
-    setParsedMetadata(null);
-    setExtractedFacts(null);
-    setAiWarning(null);
+    setCreatedSessionId(null);
+    setMachineProfile(null);
     if (inputRef.current) inputRef.current.value = "";
     browseRef.current?.focus();
   }
@@ -87,22 +87,23 @@ export function WriteupUpload({ children }: { children: ReactNode }) {
     if (!selectedFile) return;
 
     setError(null);
-    setAiWarning(null);
     setPreview("processing");
 
     startTransition(async () => {
       const formData = new FormData();
       formData.append("writeup", selectedFile);
+      if (sessionName.trim()) {
+        formData.append("sessionName", sessionName.trim());
+      }
 
-      const result = await uploadWriteupAction(formData);
+      const result = await generateTrainingAction(formData);
 
       if (!result.ok) {
         setError(result.error);
         setPreview("failed");
       } else {
-        setParsedMetadata(result.metadata);
-        setExtractedFacts(result.facts || null);
-        setAiWarning(result.aiWarning || null);
+        setCreatedSessionId(result.sessionId);
+        setMachineProfile(result.machineProfile || null);
         setPreview("ready");
       }
     });
@@ -112,7 +113,9 @@ export function WriteupUpload({ children }: { children: ReactNode }) {
     <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
       <Card role="region" aria-labelledby="upload-writeup-title" className="min-w-0">
         <CardHeader className="border-b border-border">
-          <h2 id="upload-writeup-title" className="text-base font-medium">Upload Writeup</h2>
+          <h2 id="upload-writeup-title" className="text-base font-medium">
+            Upload Writeup
+          </h2>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
             Choose the writeup for your next practice session. Supports PDF, TXT, and Markdown.
           </p>
@@ -201,44 +204,21 @@ export function WriteupUpload({ children }: { children: ReactNode }) {
                   </div>
                 )}
               </div>
+            </div>
 
-              {parsedMetadata && (
-                <div className="mt-3 rounded-lg border border-primary/30 bg-primary/5 p-3.5 text-xs">
-                  <div className="flex items-center gap-2 font-medium text-foreground">
-                    <FileCheck2 className="size-4 text-primary" />
-                    <span>Writeup Parsed & Normalized</span>
-                    <Badge variant="outline" className="ml-auto font-mono text-[10px] uppercase text-primary border-primary/30">
-                      {parsedMetadata.format}
-                    </Badge>
-                  </div>
-
-                  <div className="mt-2.5 grid grid-cols-2 gap-2 text-muted-foreground sm:grid-cols-3">
-                    <div>
-                      <span className="block text-[10px] uppercase tracking-wider text-muted-foreground/80">Words</span>
-                      <span className="font-mono font-semibold text-foreground">{parsedMetadata.wordCount.toLocaleString()}</span>
-                    </div>
-                    <div>
-                      <span className="block text-[10px] uppercase tracking-wider text-muted-foreground/80">Characters</span>
-                      <span className="font-mono font-semibold text-foreground">{parsedMetadata.characterCount.toLocaleString()}</span>
-                    </div>
-                    {parsedMetadata.pageCount !== undefined && (
-                      <div>
-                        <span className="block text-[10px] uppercase tracking-wider text-muted-foreground/80">Pages</span>
-                        <span className="font-mono font-semibold text-foreground">{parsedMetadata.pageCount}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-2.5 border-t border-border/40 pt-2">
-                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                      <Hash className="size-3 text-muted-foreground" /> SHA-256 Fingerprint:
-                    </span>
-                    <p className="mt-0.5 break-all font-mono text-[10px] text-foreground/80">
-                      {parsedMetadata.sha256Hash}
-                    </p>
-                  </div>
-                </div>
-              )}
+            <div className="space-y-2">
+              <label htmlFor="session-name" className="block text-sm font-medium">
+                Session Name (Optional)
+              </label>
+              <input
+                id="session-name"
+                name="sessionName"
+                type="text"
+                placeholder="Auto-detected from machine writeup if left blank"
+                value={sessionName}
+                onChange={(e) => setSessionName(e.target.value)}
+                className="h-10 w-full rounded-lg border border-input bg-background/40 px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring"
+              />
             </div>
 
             <div className="space-y-2">
@@ -276,30 +256,20 @@ export function WriteupUpload({ children }: { children: ReactNode }) {
               >
                 {isPending ? (
                   <>
-                    <Loader2 className="size-4 animate-spin" />
-                    Extracting Facts with Gemini AI...
+                    <Loader2 className="size-4 animate-spin mr-2" />
+                    Generating Training Session...
                   </>
                 ) : (
                   <>
-                    Parse & Extract Machine Facts
-                    <ArrowRight aria-hidden="true" strokeWidth={1.75} />
+                    Generate Training Session
+                    <ArrowRight aria-hidden="true" className="ml-1 size-4" strokeWidth={1.75} />
                   </>
                 )}
               </Button>
               <div id="generation-preview-notice" className="mt-2 space-y-1 text-xs leading-5 text-muted-foreground">
-                {parsedMetadata ? (
-                  <p className="text-primary flex items-center gap-1">
-                    <CheckCircle2 className="size-3.5 inline" />
-                    Document parsed and normalized.
-                  </p>
-                ) : (
-                  <p>Upload a writeup to extract normalized text and generate structured machine facts.</p>
-                )}
-                {aiWarning && (
-                  <p className="text-amber-400 font-mono text-[11px]">
-                    Warning: {aiWarning}
-                  </p>
-                )}
+                <p>
+                  The pipeline parses the writeup, extracts hidden knowledge, models the attack graph, and initializes your methodology checks.
+                </p>
               </div>
             </div>
           </form>
@@ -308,16 +278,19 @@ export function WriteupUpload({ children }: { children: ReactNode }) {
 
       {children}
 
-      {extractedFacts && (
-        <div className="xl:col-span-2">
-          <ExtractedFactsView facts={extractedFacts} />
-        </div>
-      )}
-
-      {preview && !extractedFacts && (
+      {preview && (
         <GenerationPreview
           state={preview}
+          isLive={true}
+          sessionId={createdSessionId || undefined}
+          machineProfile={machineProfile || undefined}
+          errorMessage={error || undefined}
           onChange={setPreview}
+          onRetry={() => {
+            if (selectedFile) {
+              handleSubmit({ preventDefault: () => {} } as React.FormEvent);
+            }
+          }}
           onReplaceFile={() => {
             removeFile();
             inputRef.current?.click();

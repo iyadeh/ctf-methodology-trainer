@@ -1,0 +1,1 @@
+ALTER TABLE "machine_profiles" ALTER COLUMN "target_ip" SET DATA TYPE varchar(255);

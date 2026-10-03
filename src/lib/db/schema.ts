@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   check,
   foreignKey,
   index,
@@ -14,6 +15,16 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
+
+export const generationRunStatusEnum = pgEnum("generation_run_status", [
+  "pending",
+  "parsing",
+  "extracting",
+  "graph_building",
+  "verifying",
+  "completed",
+  "failed",
+]);
 
 export const checkPriorityEnum = pgEnum("check_priority", [
   "required",
@@ -436,3 +447,171 @@ export const methodologyDeviations = pgTable(
     ),
   ],
 );
+
+export const writeups = pgTable(
+  "writeups",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    filename: varchar("filename", { length: 255 }).notNull(),
+    format: varchar("format", { length: 32 }).notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    sha256Hash: varchar("sha256_hash", { length: 64 }).notNull(),
+    characterCount: integer("character_count").notNull(),
+    wordCount: integer("word_count").notNull(),
+    pageCount: integer("page_count"),
+    normalizedText: text("normalized_text").notNull(),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("writeups_sha256_hash_index").on(table.sha256Hash),
+  ],
+);
+
+export const generationRuns = pgTable(
+  "generation_runs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    writeupId: uuid("writeup_id").references(() => writeups.id, {
+      onDelete: "cascade",
+    }),
+    trainingSessionId: uuid("training_session_id").references(
+      () => trainingSessions.id,
+      { onDelete: "set null" },
+    ),
+    fingerprint: varchar("fingerprint", { length: 64 }).notNull(),
+    status: generationRunStatusEnum("status").default("pending").notNull(),
+    currentStep: varchar("current_step", { length: 64 }),
+    progressPercent: integer("progress_percent").default(0).notNull(),
+    error: text("error"),
+    factsJson: text("facts_json"),
+    metadataJson: text("metadata_json"),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("generation_runs_fingerprint_index").on(table.fingerprint),
+    index("generation_runs_status_index").on(table.status),
+    index("generation_runs_training_session_id_index").on(table.trainingSessionId),
+  ],
+);
+
+export const machineProfiles = pgTable(
+  "machine_profiles",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    trainingSessionId: uuid("training_session_id")
+      .notNull()
+      .references(() => trainingSessions.id, { onDelete: "cascade" }),
+    generationRunId: uuid("generation_run_id").references(
+      () => generationRuns.id,
+      { onDelete: "set null" },
+    ),
+    name: varchar("name", { length: 255 }).notNull(),
+    platform: varchar("platform", { length: 128 }).default("Unknown").notNull(),
+    os: varchar("os", { length: 64 }).default("unknown").notNull(),
+    difficulty: varchar("difficulty", { length: 64 }).default("unknown").notNull(),
+    author: varchar("author", { length: 128 }),
+    targetIp: varchar("target_ip", { length: 255 }),
+    summary: text("summary"),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    unique("machine_profiles_training_session_id_unique").on(table.trainingSessionId),
+    index("machine_profiles_generation_run_id_index").on(table.generationRunId),
+  ],
+);
+
+export const attackGraphs = pgTable(
+  "attack_graphs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    generationRunId: uuid("generation_run_id").references(
+      () => generationRuns.id,
+      { onDelete: "cascade" },
+    ),
+    trainingSessionId: uuid("training_session_id").references(
+      () => trainingSessions.id,
+      { onDelete: "cascade" },
+    ),
+    machineName: varchar("machine_name", { length: 255 }).notNull(),
+    entryNodeIdsJson: text("entry_node_ids_json").notNull(),
+    terminalNodeIdsJson: text("terminal_node_ids_json").notNull(),
+    referencePathNodeIdsJson: text("reference_path_node_ids_json").notNull(),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("attack_graphs_training_session_id_index").on(table.trainingSessionId),
+    index("attack_graphs_generation_run_id_index").on(table.generationRunId),
+  ],
+);
+
+export const attackNodes = pgTable(
+  "attack_nodes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    attackGraphId: uuid("attack_graph_id")
+      .notNull()
+      .references(() => attackGraphs.id, { onDelete: "cascade" }),
+    nodeKey: varchar("node_key", { length: 255 }).notNull(),
+    semanticKey: varchar("semantic_key", { length: 255 }).notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    description: text("description").notNull(),
+    phase: varchar("phase", { length: 64 }).notNull(),
+    kind: varchar("kind", { length: 64 }).notNull(),
+    spoilerLevel: integer("spoiler_level").default(0).notNull(),
+    isEntryPoint: boolean("is_entry_point").default(false).notNull(),
+    isTerminal: boolean("is_terminal").default(false).notNull(),
+    metadataJson: text("metadata_json"),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("attack_nodes_attack_graph_id_index").on(table.attackGraphId),
+    index("attack_nodes_node_key_index").on(table.nodeKey),
+  ],
+);
+
+export const attackEdges = pgTable(
+  "attack_edges",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    attackGraphId: uuid("attack_graph_id")
+      .notNull()
+      .references(() => attackGraphs.id, { onDelete: "cascade" }),
+    sourceNodeKey: varchar("source_node_key", { length: 255 }).notNull(),
+    targetNodeKey: varchar("target_node_key", { length: 255 }).notNull(),
+    dependencyType: varchar("dependency_type", { length: 32 }).default("hard").notNull(),
+    description: text("description"),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("attack_edges_attack_graph_id_index").on(table.attackGraphId),
+  ],
+);
+
+export const graphVerifications = pgTable(
+  "graph_verifications",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    attackGraphId: uuid("attack_graph_id")
+      .notNull()
+      .references(() => attackGraphs.id, { onDelete: "cascade" }),
+    status: varchar("status", { length: 32 }).notNull(),
+    confidence: integer("confidence").notNull(),
+    missingStepsJson: text("missing_steps_json").notNull(),
+    unsupportedStepsJson: text("unsupported_steps_json").notNull(),
+    conflictsJson: text("conflicts_json").notNull(),
+    checksJson: text("checks_json").notNull(),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }).defaultNow().notNull(),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("graph_verifications_attack_graph_id_index").on(table.attackGraphId),
+  ],
+);
+
