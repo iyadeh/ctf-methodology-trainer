@@ -11,6 +11,8 @@
     "test": "vitest run src/modules",
     "test:graph": "vitest run tests/attack-graph/demo.test.ts",
     "test:verify": "vitest run tests/verification/demo.test.ts",
+    "test:guidance": "vitest run tests/guidance",
+    "test:guidance:demo": "vitest run tests/guidance/demo.test.ts",
     "test:db": "vitest run tests/db",
     "db:up": "docker compose --env-file .env.local up -d",
     "db:down": "docker compose --env-file .env.local down",
