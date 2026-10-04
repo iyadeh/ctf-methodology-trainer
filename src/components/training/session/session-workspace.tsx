@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { CheckSquare, Compass, FileText, Lightbulb, Search, Tag } from "lucide-react";
+import { CheckSquare, Compass, FileText, Lightbulb, LockOpen, Search, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TrainingSessionAggregate } from "@/modules/training/types";
 import type { HintMetrics, HintRecord } from "@/modules/mentor/types";
+import type { RevealedReferencePath } from "@/modules/training/completion";
 import { SessionHeader } from "./session-header";
 import { PhaseStepper } from "./phase-stepper";
 import { ChecklistSection } from "./checklist-section";
@@ -13,21 +14,34 @@ import { HypothesesPanel } from "./hypotheses-panel";
 import { NotesPanel } from "./notes-panel";
 import { ContextPanel } from "./context-panel";
 import { MentorPanel } from "./mentor-panel";
+import { ReferencePathPanel } from "./reference-path-panel";
 
 interface SessionWorkspaceProps {
   readonly aggregate: TrainingSessionAggregate;
   readonly initialHints?: readonly HintRecord[];
   readonly initialMetrics?: HintMetrics;
+  readonly revealedReferencePath?: RevealedReferencePath | null;
 }
 
-type TabType = "checklist" | "findings" | "hypotheses" | "notes" | "context" | "mentor";
+type TabType =
+  | "checklist"
+  | "findings"
+  | "hypotheses"
+  | "notes"
+  | "context"
+  | "mentor"
+  | "reference-path";
 
 export function SessionWorkspace({
   aggregate,
   initialHints = [],
   initialMetrics,
+  revealedReferencePath,
 }: SessionWorkspaceProps) {
-  const [activeTab, setActiveTab] = useState<TabType>("checklist");
+  const isCompleted = aggregate.session.status === "completed";
+  const [activeTab, setActiveTab] = useState<TabType>(
+    isCompleted && revealedReferencePath?.available ? "reference-path" : "checklist",
+  );
 
   const { session, phases, currentPhase, findings, hypotheses, attempts, notes, context } =
     aggregate;
@@ -44,6 +58,16 @@ export function SessionWorkspace({
     { id: "notes", label: "Notes", count: notes.length, icon: FileText },
     { id: "context", label: "Context", count: context.length, icon: Tag },
     { id: "mentor", label: "AI Mentor", count: initialHints.length > 0 ? initialHints.length : undefined, icon: Compass },
+    ...(isCompleted
+      ? [
+          {
+            id: "reference-path" as TabType,
+            label: "Reference Path",
+            count: revealedReferencePath?.referencePathNodes?.length,
+            icon: LockOpen,
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -101,10 +125,15 @@ export function SessionWorkspace({
             sessionId={session.id}
             currentPhase={currentPhase}
             isFinalPhase={isFinalPhase}
+            isCompleted={isCompleted}
           />
         )}
         {activeTab === "findings" && (
-          <FindingsPanel sessionId={session.id} findings={findings} />
+          <FindingsPanel
+            sessionId={session.id}
+            findings={findings}
+            isCompleted={isCompleted}
+          />
         )}
         {activeTab === "hypotheses" && (
           <HypothesesPanel
@@ -112,10 +141,15 @@ export function SessionWorkspace({
             hypotheses={hypotheses}
             attempts={attempts}
             findings={findings}
+            isCompleted={isCompleted}
           />
         )}
         {activeTab === "notes" && (
-          <NotesPanel sessionId={session.id} notes={notes} />
+          <NotesPanel
+            sessionId={session.id}
+            notes={notes}
+            isCompleted={isCompleted}
+          />
         )}
         {activeTab === "context" && <ContextPanel context={context} />}
         {activeTab === "mentor" && (
@@ -127,6 +161,9 @@ export function SessionWorkspace({
             initialHints={initialHints}
             initialMetrics={initialMetrics}
           />
+        )}
+        {activeTab === "reference-path" && (
+          <ReferencePathPanel referencePath={revealedReferencePath ?? null} />
         )}
       </main>
     </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Lightbulb, Plus } from "lucide-react";
+import { Lightbulb, Lock, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +19,7 @@ interface HypothesesPanelProps {
   readonly hypotheses: readonly HypothesisRecord[];
   readonly attempts: readonly AttemptRecord[];
   readonly findings: readonly FindingRecord[];
+  readonly isCompleted?: boolean;
 }
 
 export function HypothesesPanel({
@@ -26,6 +27,7 @@ export function HypothesesPanel({
   hypotheses,
   attempts,
   findings,
+  isCompleted = false,
 }: HypothesesPanelProps) {
   const [isPending, startTransition] = useTransition();
   const [showAddHypothesis, setShowAddHypothesis] = useState(false);
@@ -96,6 +98,15 @@ export function HypothesesPanel({
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
+      {isCompleted && (
+        <div className="flex items-center gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-300">
+          <Lock className="h-4 w-4 shrink-0 text-amber-400" />
+          <span>
+            Training session is completed. Hypotheses and verification attempts are locked in read-only mode.
+          </span>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-sm font-semibold tracking-tight text-foreground">
@@ -106,15 +117,17 @@ export function HypothesesPanel({
           </p>
         </div>
 
-        <Button
-          type="button"
-          size="sm"
-          onClick={() => setShowAddHypothesis(!showAddHypothesis)}
-          className="gap-1.5 text-xs"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          New Hypothesis
-        </Button>
+        {!isCompleted && (
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setShowAddHypothesis(!showAddHypothesis)}
+            className="gap-1.5 text-xs"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            New Hypothesis
+          </Button>
+        )}
       </div>
 
       {showAddHypothesis && (
@@ -277,18 +290,20 @@ export function HypothesesPanel({
                       )}
                     </div>
 
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        setActiveAttemptHypothesisId(isRecordingAttempt ? null : hypothesis.id)
-                      }
-                      className="shrink-0 text-xs gap-1.5"
-                    >
-                      <Plus className="h-3 w-3" />
-                      Record Attempt
-                    </Button>
+                    {!isCompleted && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setActiveAttemptHypothesisId(isRecordingAttempt ? null : hypothesis.id)
+                        }
+                        className="shrink-0 text-xs gap-1.5"
+                      >
+                        <Plus className="h-3 w-3" />
+                        Record Attempt
+                      </Button>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 gap-2 rounded bg-background/50 p-3 sm:grid-cols-3 text-xs">

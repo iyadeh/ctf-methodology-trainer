@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Pause, Play, Target } from "lucide-react";
+import { CheckCircle2, Lock, Pause, Play, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -12,6 +12,7 @@ import {
   setTargetIpAction,
   startSessionAction,
 } from "@/app/training/[sessionId]/actions";
+import { CompleteSessionDialog } from "./complete-session-dialog";
 
 interface SessionHeaderProps {
   readonly aggregate: TrainingSessionAggregate;
@@ -21,11 +22,15 @@ export function SessionHeader({ aggregate }: SessionHeaderProps) {
   const { session, progress, currentPhase } = aggregate;
   const [isPending, startTransition] = useTransition();
   const [isEditingIp, setIsEditingIp] = useState(false);
+  const [isCompleteOpen, setIsCompleteOpen] = useState(false);
   const [ipValue, setIpValue] = useState(session.targetIp ?? "");
   const [error, setError] = useState<string | null>(null);
 
+  const isCompleted = session.status === "completed";
+
   const handleIpSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isCompleted) return;
     setError(null);
     const trimmed = ipValue.trim();
     if (!trimmed) {
@@ -69,18 +74,35 @@ export function SessionHeader({ aggregate }: SessionHeaderProps) {
               Training Session
             </span>
             <span className="text-muted-foreground">•</span>
-            <Badge
-              variant={
-                session.status === "in_progress"
-                  ? "default"
-                  : session.status === "completed"
-                    ? "secondary"
+            {isCompleted ? (
+              <>
+                <Badge
+                  variant="outline"
+                  className="border-emerald-500/40 bg-emerald-500/10 text-emerald-400 font-mono text-[11px] gap-1"
+                >
+                  <CheckCircle2 className="h-3 w-3" />
+                  Completed
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className="border-amber-500/40 bg-amber-500/10 text-amber-400 font-mono text-[11px] gap-1"
+                >
+                  <Lock className="h-3 w-3" />
+                  Locked
+                </Badge>
+              </>
+            ) : (
+              <Badge
+                variant={
+                  session.status === "in_progress"
+                    ? "default"
                     : "outline"
-              }
-              className="font-mono text-[11px] capitalize"
-            >
-              {session.status.replace("_", " ")}
-            </Badge>
+                }
+                className="font-mono text-[11px] capitalize"
+              >
+                {session.status.replace("_", " ")}
+              </Badge>
+            )}
             {currentPhase && (
               <Badge variant="outline" className="border-primary/40 text-primary font-mono text-[11px]">
                 {currentPhase.name}
@@ -96,7 +118,7 @@ export function SessionHeader({ aggregate }: SessionHeaderProps) {
           <div className="mt-2.5 flex items-center gap-2">
             <Target className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="font-mono text-xs text-muted-foreground">Target IP:</span>
-            {isEditingIp ? (
+            {!isCompleted && isEditingIp ? (
               <form onSubmit={handleIpSubmit} className="flex items-center gap-2">
                 <input
                   type="text"
@@ -122,9 +144,12 @@ export function SessionHeader({ aggregate }: SessionHeaderProps) {
             ) : (
               <button
                 type="button"
-                onClick={() => setIsEditingIp(true)}
-                className="group flex items-center gap-1.5 rounded px-1.5 py-0.5 font-mono text-xs text-foreground hover:bg-muted"
-                title="Click to edit Target IP"
+                onClick={() => {
+                  if (!isCompleted) setIsEditingIp(true);
+                }}
+                disabled={isCompleted}
+                className="group flex items-center gap-1.5 rounded px-1.5 py-0.5 font-mono text-xs text-foreground hover:bg-muted disabled:hover:bg-transparent"
+                title={isCompleted ? "Session completed (locked)" : "Click to edit Target IP"}
               >
                 <span className={session.targetIp ? "font-semibold text-primary" : "italic text-muted-foreground"}>
                   {session.targetIp ?? "Not specified (click to set)"}
@@ -167,20 +192,54 @@ export function SessionHeader({ aggregate }: SessionHeaderProps) {
               </Button>
             )}
             {session.status === "in_progress" && (
-              <Button onClick={handlePause} disabled={isPending} variant="outline" size="sm" className="gap-1.5 text-xs">
-                <Pause className="h-3.5 w-3.5" />
-                Pause
-              </Button>
+              <>
+                <Button onClick={handlePause} disabled={isPending} variant="outline" size="sm" className="gap-1.5 text-xs">
+                  <Pause className="h-3.5 w-3.5" />
+                  Pause
+                </Button>
+                <Button
+                  onClick={() => setIsCompleteOpen(true)}
+                  disabled={isPending}
+                  size="sm"
+                  className="gap-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Complete Machine
+                </Button>
+              </>
             )}
             {session.status === "paused" && (
-              <Button onClick={handleResume} disabled={isPending} size="sm" className="gap-1.5 text-xs">
-                <Play className="h-3.5 w-3.5" />
-                Resume
-              </Button>
+              <>
+                <Button onClick={handleResume} disabled={isPending} size="sm" className="gap-1.5 text-xs">
+                  <Play className="h-3.5 w-3.5" />
+                  Resume
+                </Button>
+                <Button
+                  onClick={() => setIsCompleteOpen(true)}
+                  disabled={isPending}
+                  size="sm"
+                  className="gap-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Complete Machine
+                </Button>
+              </>
+            )}
+            {isCompleted && session.completedAt && (
+              <span className="font-mono text-[11px] text-muted-foreground">
+                Completed on {new Date(session.completedAt).toLocaleDateString()}{" "}
+                {new Date(session.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </span>
             )}
           </div>
         </div>
       </div>
+
+      <CompleteSessionDialog
+        sessionId={session.id}
+        isOpen={isCompleteOpen}
+        onClose={() => setIsCompleteOpen(false)}
+      />
     </header>
   );
 }

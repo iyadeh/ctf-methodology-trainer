@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { FileText, Plus, Trash2 } from "lucide-react";
+import { FileText, Lock, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { NoteRecord } from "@/modules/training/types";
@@ -10,9 +10,14 @@ import { createNoteAction, deleteNoteAction } from "@/app/training/[sessionId]/a
 interface NotesPanelProps {
   readonly sessionId: string;
   readonly notes: readonly NoteRecord[];
+  readonly isCompleted?: boolean;
 }
 
-export function NotesPanel({ sessionId, notes }: NotesPanelProps) {
+export function NotesPanel({
+  sessionId,
+  notes,
+  isCompleted = false,
+}: NotesPanelProps) {
   const [isPending, startTransition] = useTransition();
   const [showAddNote, setShowAddNote] = useState(false);
   const [title, setTitle] = useState("");
@@ -47,6 +52,13 @@ export function NotesPanel({ sessionId, notes }: NotesPanelProps) {
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
+      {isCompleted && (
+        <div className="flex items-center gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-300">
+          <Lock className="h-4 w-4 shrink-0 text-amber-400" />
+          <span>Training session is completed. Notes are locked in read-only mode.</span>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-sm font-semibold tracking-tight text-foreground">
@@ -57,15 +69,17 @@ export function NotesPanel({ sessionId, notes }: NotesPanelProps) {
           </p>
         </div>
 
-        <Button
-          type="button"
-          size="sm"
-          onClick={() => setShowAddNote(!showAddNote)}
-          className="gap-1.5 text-xs"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Add Note
-        </Button>
+        {!isCompleted && (
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setShowAddNote(!showAddNote)}
+            className="gap-1.5 text-xs"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add Note
+          </Button>
+        )}
       </div>
 
       {showAddNote && (
@@ -146,17 +160,19 @@ export function NotesPanel({ sessionId, notes }: NotesPanelProps) {
                     {note.title ?? "Untitled Note"}
                   </span>
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDelete(note.id)}
-                  disabled={isPending}
-                  className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                  aria-label="Delete note"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
+                {!isCompleted && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(note.id)}
+                    disabled={isPending}
+                    className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                    aria-label="Delete note"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                )}
               </CardHeader>
               <CardContent className="p-4 flex-1">
                 <pre className="whitespace-pre-wrap font-mono text-xs text-foreground/90">

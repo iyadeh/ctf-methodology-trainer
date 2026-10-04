@@ -175,7 +175,7 @@ export async function loadSessionCheck(
 export async function updateTrainingSession(
   transaction: TrainingTransaction,
   sessionId: string,
-  values: Partial<Pick<TrainingSessionRecord, "status" | "startedAt" | "targetIp">>,
+  values: Partial<Pick<TrainingSessionRecord, "status" | "startedAt" | "completedAt" | "targetIp">>,
 ) {
   const [session] = await transaction
     .update(trainingSessions)

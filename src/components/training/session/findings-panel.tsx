@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, ShieldCheck, Tag } from "lucide-react";
+import { Lock, Plus, ShieldCheck, Tag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,9 +23,14 @@ type ImportanceLevel = (typeof findingImportanceEnum.enumValues)[number];
 interface FindingsPanelProps {
   readonly sessionId: string;
   readonly findings: readonly FindingRecord[];
+  readonly isCompleted?: boolean;
 }
 
-export function FindingsPanel({ sessionId, findings }: FindingsPanelProps) {
+export function FindingsPanel({
+  sessionId,
+  findings,
+  isCompleted = false,
+}: FindingsPanelProps) {
   const [isPending, startTransition] = useTransition();
   const [showAddForm, setShowAddForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +78,15 @@ export function FindingsPanel({ sessionId, findings }: FindingsPanelProps) {
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
+      {isCompleted && (
+        <div className="flex items-center gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-300">
+          <Lock className="h-4 w-4 shrink-0 text-amber-400" />
+          <span>
+            Training session is completed. Findings are locked in read-only mode.
+          </span>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-sm font-semibold tracking-tight text-foreground">
@@ -83,15 +97,17 @@ export function FindingsPanel({ sessionId, findings }: FindingsPanelProps) {
           </p>
         </div>
 
-        <Button
-          type="button"
-          size="sm"
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="gap-1.5 text-xs"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Add Finding
-        </Button>
+        {!isCompleted && (
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="gap-1.5 text-xs"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add Finding
+          </Button>
+        )}
       </div>
 
       {showAddForm && (
@@ -325,7 +341,7 @@ export function FindingsPanel({ sessionId, findings }: FindingsPanelProps) {
                       )}
                     </div>
 
-                    {!isConfirmed && (
+                    {!isConfirmed && !isCompleted && (
                       <Button
                         type="button"
                         size="sm"

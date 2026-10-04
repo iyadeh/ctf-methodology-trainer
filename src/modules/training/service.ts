@@ -370,3 +370,13 @@ export async function advanceTrainingSessionPhase(
     };
   });
 }
+
+export {
+  completeTrainingSession,
+  getRevealedReferencePath,
+  completeSessionInputSchema,
+  type CompleteSessionInput,
+  type RevealedReferencePath,
+  type RevealedReferencePathNode,
+  type RevealedReferencePathEdge,
+} from "./completion";

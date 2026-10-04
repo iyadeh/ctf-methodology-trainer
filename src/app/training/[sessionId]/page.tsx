@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getTrainingSession } from "@/modules/training/service";
+import { getRevealedReferencePath, getTrainingSession } from "@/modules/training/service";
 import { TrainingSessionError, type TrainingSessionAggregate } from "@/modules/training/types";
 import { getSessionHintsAndMetrics } from "@/modules/mentor/service";
 import { SessionWorkspace } from "@/components/training/session/session-workspace";
@@ -36,13 +36,17 @@ export default async function TrainingSessionPage({ params }: SessionPageProps) 
     throw error;
   }
 
-  const { hints, metrics } = await getSessionHintsAndMetrics(sessionId);
+  const [{ hints, metrics }, revealedReferencePath] = await Promise.all([
+    getSessionHintsAndMetrics(sessionId),
+    getRevealedReferencePath(sessionId),
+  ]);
 
   return (
     <SessionWorkspace
       aggregate={aggregate}
       initialHints={hints}
       initialMetrics={metrics}
+      revealedReferencePath={revealedReferencePath}
     />
   );
 }

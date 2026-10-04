@@ -4,11 +4,13 @@ import { revalidatePath } from "next/cache";
 import {
   advanceTrainingSessionPhase,
   completeSessionCheck,
+  completeTrainingSession,
   pauseTrainingSession,
   resumeTrainingSession,
   setTrainingSessionTargetIp,
   skipSessionCheck,
   startTrainingSession,
+  type CompleteSessionInput,
 } from "@/modules/training/service";
 import {
   confirmFinding,
@@ -214,3 +216,20 @@ export async function deleteNoteAction(sessionId: string, noteId: string) {
     };
   }
 }
+
+export async function completeSessionAction(
+  sessionId: string,
+  input?: CompleteSessionInput,
+) {
+  try {
+    await completeTrainingSession(sessionId, input);
+    revalidatePath(`/training/${sessionId}`);
+    return { ok: true as const };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error: error instanceof Error ? error.message : "Failed to complete session",
+    };
+  }
+}
+

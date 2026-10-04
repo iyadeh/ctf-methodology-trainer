@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   ChevronRight,
   CornerDownRight,
+  Lock,
   RotateCcw,
   SkipForward,
 } from "lucide-react";
@@ -26,6 +27,7 @@ interface ChecklistSectionProps {
   readonly sessionId: string;
   readonly currentPhase: SessionPhaseSnapshot | null;
   readonly isFinalPhase: boolean;
+  readonly isCompleted?: boolean;
 }
 
 interface ChecklistGroup {
@@ -100,6 +102,7 @@ export function ChecklistSection({
   sessionId,
   currentPhase,
   isFinalPhase,
+  isCompleted = false,
 }: ChecklistSectionProps) {
   const [isPending, startTransition] = useTransition();
   const [blockedGate, setBlockedGate] = useState<{
@@ -114,7 +117,9 @@ export function ChecklistSection({
       <Card className="m-6 border-dashed text-center">
         <CardContent className="py-12">
           <p className="text-sm text-muted-foreground">
-            Session is not started or has completed all phases.
+            {isCompleted
+              ? "Training session is completed. All checklist items are locked in read-only mode."
+              : "Session is not started or has completed all phases."}
           </p>
         </CardContent>
       </Card>
@@ -124,7 +129,7 @@ export function ChecklistSection({
   const groups = groupChecks(currentPhase.checks);
 
   const handleToggleCheck = (check: SessionCheckRecord) => {
-    if (check.status === "superseded" || check.status === "inactive") return;
+    if (isCompleted || check.status === "superseded" || check.status === "inactive") return;
 
     startTransition(async () => {
       if (check.status === "completed") {
@@ -136,12 +141,14 @@ export function ChecklistSection({
   };
 
   const handleSkipCheck = (checkId: string) => {
+    if (isCompleted) return;
     startTransition(async () => {
       await skipCheckAction(sessionId, checkId);
     });
   };
 
   const handleAdvance = (override = false) => {
+    if (isCompleted) return;
     setAdvanceError(null);
     startTransition(async () => {
       const reason = override ? overrideReason.trim() : undefined;
@@ -165,6 +172,15 @@ export function ChecklistSection({
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
+      {isCompleted && (
+        <div className="flex items-center gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-300">
+          <Lock className="h-4 w-4 shrink-0 text-amber-400" />
+          <span>
+            Training session is completed. All checklist items are locked in read-only mode.
+          </span>
+        </div>
+      )}
+
       {/* Groups */}
       {groups.map((group) => {
         const completedCount = group.checks.filter((c) => c.status === "completed").length;
@@ -197,7 +213,7 @@ export function ChecklistSection({
 
             <CardContent className="divide-y divide-border/40 p-0">
               {group.checks.map((check) => {
-                const isCompleted = check.status === "completed";
+                const isCheckCompleted = check.status === "completed";
                 const isSkipped = check.status === "skipped";
                 const isSuperseded = check.status === "superseded";
                 const isInactive = check.status === "inactive";
@@ -207,7 +223,7 @@ export function ChecklistSection({
                     key={check.id}
                     className={cn(
                       "flex flex-col gap-2 p-4 transition-colors sm:flex-row sm:items-start sm:justify-between sm:gap-4",
-                      isCompleted && "bg-primary/[0.02]",
+                      isCheckCompleted && "bg-primary/[0.02]",
                       isSuperseded && "opacity-50 line-through bg-muted/20",
                     )}
                   >
@@ -215,18 +231,20 @@ export function ChecklistSection({
                       <button
                         type="button"
                         onClick={() => handleToggleCheck(check)}
-                        disabled={isPending || isSuperseded || isInactive || isCompleted}
+                        disabled={isPending || isCompleted || isSuperseded || isInactive || isCheckCompleted}
                         className={cn(
                           "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
-                          isCompleted
+                          isCheckCompleted
                             ? "border-primary bg-primary text-primary-foreground"
                             : isSkipped
                               ? "border-muted-foreground/60 bg-muted/60 text-muted-foreground"
-                              : "border-border hover:border-primary focus:outline-none focus:ring-1 focus:ring-primary",
+                              : isCompleted
+                                ? "border-border/40 opacity-40 cursor-not-allowed"
+                                : "border-border hover:border-primary focus:outline-none focus:ring-1 focus:ring-primary",
                         )}
                         aria-label={`Mark ${check.title} as completed`}
                       >
-                        {isCompleted && <Check className="h-3 w-3 stroke-[3]" />}
+                        {isCheckCompleted && <Check className="h-3 w-3 stroke-[3]" />}
                       </button>
 
                       <div className="space-y-1">
@@ -234,7 +252,7 @@ export function ChecklistSection({
                           <p
                             className={cn(
                               "text-xs font-medium tracking-tight",
-                              isCompleted ? "text-foreground font-semibold" : "text-foreground",
+                              isCheckCompleted ? "text-foreground font-semibold" : "text-foreground",
                             )}
                           >
                             {check.title}
@@ -273,14 +291,14 @@ export function ChecklistSection({
                       </div>
                     </div>
 
-                    {!isCompleted && !isSuperseded && !isSkipped && (
+                    {!isCompleted && !isCheckCompleted && !isSuperseded && !isSkipped && (
                       <div className="flex shrink-0 items-center gap-1.5 self-end sm:self-start">
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
                           onClick={() => handleSkipCheck(check.id)}
-                          disabled={isPending}
+                          disabled={isPending || isCompleted}
                           className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground"
                           title="Skip check (does not count toward coverage)"
                         >
@@ -300,7 +318,12 @@ export function ChecklistSection({
       {/* Advance Phase Button */}
       <div className="flex flex-col items-end gap-2 border-t border-border/80 pt-4">
         {advanceError && <p className="text-xs text-destructive">{advanceError}</p>}
-        {!isFinalPhase ? (
+        {isCompleted ? (
+          <div className="flex items-center gap-2 text-xs font-mono text-emerald-400">
+            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+            Assessment completed & locked. Reference path unlocked.
+          </div>
+        ) : !isFinalPhase ? (
           <Button
             type="button"
             onClick={() => handleAdvance(false)}
