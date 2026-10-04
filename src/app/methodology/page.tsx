@@ -1,10 +1,22 @@
-import { PagePlaceholder } from "@/components/layout/page-placeholder";
+import { getMethodologyReferenceData } from "@/modules/methodology/reference";
+import { MethodologyShell } from "@/components/methodology/methodology-shell";
 
-export default function MethodologyPage() {
+interface MethodologyPageProps {
+  readonly searchParams: Promise<{
+    phase?: string;
+  }>;
+}
+
+export default async function MethodologyPage({
+  searchParams,
+}: MethodologyPageProps) {
+  const params = await searchParams;
+  const data = getMethodologyReferenceData();
+
   return (
-    <PagePlaceholder
-      title="Methodology"
-      description="PTES reference content will be implemented in a later stage."
+    <MethodologyShell
+      data={data}
+      initialPhase={params.phase}
     />
   );
 }
