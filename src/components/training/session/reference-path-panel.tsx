@@ -93,9 +93,14 @@ function NodeCard({
           {node.title}
         </h4>
 
-        <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">
-          {node.description}
-        </p>
+        {node.description &&
+          node.description !== "unknown unknown" &&
+          node.description !== "unknown" &&
+          !node.description.startsWith("Phase:") && (
+            <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">
+              {node.description}
+            </p>
+          )}
 
         {/* Node Metadata (Ports, Service, Tools) */}
         <div className="mt-3.5 flex flex-wrap items-center gap-2 pt-3 border-t border-border/50 text-[11px] font-mono text-muted-foreground">
