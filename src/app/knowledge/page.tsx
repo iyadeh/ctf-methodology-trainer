@@ -1,10 +1,34 @@
-import { PagePlaceholder } from "@/components/layout/page-placeholder";
+import { getAllKnowledgeItems, getCategorySummaries } from "@/modules/knowledge";
+import { KnowledgeShell } from "@/components/knowledge/knowledge-shell";
 
-export default function KnowledgeBasePage() {
+interface KnowledgePageProps {
+  readonly searchParams: Promise<{
+    item?: string;
+    category?: string;
+    tag?: string;
+  }>;
+}
+
+export default async function KnowledgeBasePage({
+  searchParams,
+}: KnowledgePageProps) {
+  const params = await searchParams;
+  const allItems = getAllKnowledgeItems();
+  const categorySummaries = getCategorySummaries();
+  const formattedDate = new Date().toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+
   return (
-    <PagePlaceholder
-      title="Knowledge Base"
-      description="Reusable playbooks and reference material will be implemented in a later stage."
+    <KnowledgeShell
+      allItems={allItems}
+      categorySummaries={categorySummaries}
+      initialSlug={params.item}
+      initialCategory={params.category}
+      initialTag={params.tag}
+      formattedDate={formattedDate}
     />
   );
 }
