@@ -1,10 +1,26 @@
-import { PagePlaceholder } from "@/components/layout/page-placeholder";
+import { fetchAvailableGeminiModels, getAppSettings } from "@/modules/settings";
+import { SettingsShell } from "@/components/settings/settings-shell";
 
-export default function SettingsPage() {
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+export default async function SettingsPage() {
+  const [settings, initialModels] = await Promise.all([
+    getAppSettings(),
+    fetchAvailableGeminiModels(),
+  ]);
+
+  const formattedDate = new Date().toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+
   return (
-    <PagePlaceholder
-      title="Settings"
-      description="Application preferences will be implemented in a later stage."
+    <SettingsShell
+      initialSettings={settings}
+      initialModels={initialModels}
+      formattedDate={formattedDate}
     />
   );
 }
