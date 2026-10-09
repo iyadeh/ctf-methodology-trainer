@@ -15,8 +15,8 @@ export type TrainingSessionDemo = {
   name: string;
   description: string;
   methodology: "PTES";
-  operatingSystem: "Linux" | "Windows";
-  difficulty: "Easy" | "Medium" | "Hard";
+  operatingSystem: "Linux" | "Windows" | "macOS" | "BSD" | "Android" | "Unknown";
+  difficulty: "Easy" | "Medium" | "Hard" | "Insane" | "Unrated";
   status: TrainingSessionStatus;
   progress: number;
   taskProgress: string;

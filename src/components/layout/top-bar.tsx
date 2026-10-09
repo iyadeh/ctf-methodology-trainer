@@ -1,9 +1,26 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Bell, Search, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 
 export function TopBar() {
+  const router = useRouter();
+  const [search, setSearch] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const query = search.trim();
+    if (query) {
+      router.push(`/training?search=${encodeURIComponent(query)}`);
+    } else {
+      router.push("/training");
+    }
+  };
+
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-background">
       <div className="flex h-[4.25rem] items-center gap-3 px-3 sm:px-4 lg:px-6">
@@ -15,7 +32,7 @@ export function TopBar() {
           <ShieldCheck aria-hidden="true" className="size-[1.125rem]" strokeWidth={1.75} />
         </Link>
 
-        <div className="relative min-w-0 flex-1 sm:max-w-xl">
+        <form onSubmit={handleSubmit} className="relative min-w-0 flex-1 sm:max-w-xl">
           <label htmlFor="global-search" className="sr-only">
             Global search
           </label>
@@ -27,11 +44,13 @@ export function TopBar() {
           <Input
             id="global-search"
             type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             autoComplete="off"
             placeholder="Search machines, topics, or methodology..."
             className="h-9 border-border bg-muted/25 pl-9 text-sm placeholder:text-muted-foreground/80 focus-visible:bg-muted/40"
           />
-        </div>
+        </form>
 
         <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
           <button

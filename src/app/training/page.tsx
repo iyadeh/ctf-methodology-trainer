@@ -9,7 +9,16 @@ export const metadata: Metadata = {
   title: "Training Sessions",
 };
 
-export default async function TrainingSessionsPage() {
+interface TrainingSessionsPageProps {
+  readonly searchParams: Promise<{ search?: string; q?: string }>;
+}
+
+export default async function TrainingSessionsPage({
+  searchParams,
+}: TrainingSessionsPageProps) {
+  const params = await searchParams;
+  const initialQuery = params?.search || params?.q || "";
+
   const today = new Date();
   const currentDate = new Intl.DateTimeFormat("en-US", {
     weekday: "short",
@@ -26,6 +35,7 @@ export default async function TrainingSessionsPage() {
       currentDateTime={today.toISOString().slice(0, 10)}
       sessions={sessions}
       metrics={metrics}
+      initialQuery={initialQuery}
     />
   );
 }

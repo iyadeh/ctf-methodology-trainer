@@ -5,7 +5,10 @@ import {
   advanceTrainingSessionPhase,
   completeSessionCheck,
   completeTrainingSession,
+  deleteTrainingSession,
   pauseTrainingSession,
+  renameTrainingSession,
+  resetTrainingSession,
   resumeTrainingSession,
   setTrainingSessionTargetIp,
   skipSessionCheck,
@@ -229,6 +232,50 @@ export async function completeSessionAction(
     return {
       ok: false as const,
       error: error instanceof Error ? error.message : "Failed to complete session",
+    };
+  }
+}
+
+export async function deleteSessionAction(sessionId: string) {
+  try {
+    await deleteTrainingSession(sessionId);
+    revalidatePath("/training");
+    revalidatePath("/");
+    return { ok: true as const };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error: error instanceof Error ? error.message : "Failed to delete session",
+    };
+  }
+}
+
+export async function resetSessionAction(sessionId: string) {
+  try {
+    await resetTrainingSession(sessionId);
+    revalidatePath(`/training/${sessionId}`);
+    revalidatePath("/training");
+    revalidatePath("/");
+    return { ok: true as const };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error: error instanceof Error ? error.message : "Failed to restart session",
+    };
+  }
+}
+
+export async function renameSessionAction(sessionId: string, newName: string) {
+  try {
+    await renameTrainingSession(sessionId, newName);
+    revalidatePath(`/training/${sessionId}`);
+    revalidatePath("/training");
+    revalidatePath("/");
+    return { ok: true as const };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error: error instanceof Error ? error.message : "Failed to rename session",
     };
   }
 }

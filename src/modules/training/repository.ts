@@ -7,7 +7,10 @@ import {
   frameworkChecks,
   frameworkPhases,
   frameworks,
+  generationRuns,
+  hintRecords,
   hypotheses,
+  machineProfiles,
   methodologyDeviations,
   notes,
   sessionChecks,
@@ -186,7 +189,7 @@ export async function loadSessionCheck(
 export async function updateTrainingSession(
   transaction: TrainingTransaction,
   sessionId: string,
-  values: Partial<Pick<TrainingSessionRecord, "status" | "startedAt" | "completedAt" | "targetIp">>,
+  values: Partial<Pick<TrainingSessionRecord, "name" | "status" | "startedAt" | "completedAt" | "targetIp">>,
 ) {
   const [session] = await transaction
     .update(trainingSessions)
@@ -330,13 +333,134 @@ export async function loadAllTrainingSessions() {
     .from(sessionChecks)
     .orderBy(asc(sessionChecks.sortOrder));
 
+  const allProfiles = await db
+    .select()
+    .from(machineProfiles);
+
   return allSessions.map((session) => {
     const phases = allPhases.filter((p) => p.trainingSessionId === session.id);
     const checks = allChecks.filter((c) => c.trainingSessionId === session.id);
+    const profile = allProfiles.find((p) => p.trainingSessionId === session.id) ?? null;
     return {
       session,
       phases,
       checks,
+      profile,
     };
+  });
+}
+
+/**
+ * Permanently deletes a training session and cleans up its associated records.
+ */
+export async function deleteTrainingSessionRecord(sessionId: string): Promise<boolean> {
+  if (!isValidUuid(sessionId)) {
+    throw new TrainingSessionError("not_found", "Training Session not found.");
+  }
+
+  return trainingTransaction(async (transaction) => {
+    const [existing] = await transaction
+      .select({ id: trainingSessions.id })
+      .from(trainingSessions)
+      .where(eq(trainingSessions.id, sessionId));
+
+    if (!existing) {
+      throw new TrainingSessionError("not_found", "Training Session not found.");
+    }
+
+    // Explicitly delete generationRuns referencing this session
+    await transaction
+      .delete(generationRuns)
+      .where(eq(generationRuns.trainingSessionId, sessionId));
+
+    // Delete session (foreign keys cascade to phases, checks, findings, notes, hints, profiles, graphs)
+    await transaction
+      .delete(trainingSessions)
+      .where(eq(trainingSessions.id, sessionId));
+
+    return true;
+  });
+}
+
+/**
+ * Resets a training session back to 'not_started' and resets its checklist and evidence.
+ */
+export async function resetTrainingSessionRecord(sessionId: string): Promise<void> {
+  if (!isValidUuid(sessionId)) {
+    throw new TrainingSessionError("not_found", "Training Session not found.");
+  }
+
+  await trainingTransaction(async (transaction) => {
+    await lockTrainingSession(transaction, sessionId);
+
+    // 1. Reset session status, startedAt, completedAt
+    await transaction
+      .update(trainingSessions)
+      .set({
+        status: "not_started",
+        startedAt: null,
+        completedAt: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(trainingSessions.id, sessionId));
+
+    // 2. Clear findings, hypotheses, attempts, notes, deviations, and hints
+    await transaction.delete(findings).where(eq(findings.trainingSessionId, sessionId));
+    await transaction.delete(hypotheses).where(eq(hypotheses.trainingSessionId, sessionId));
+    await transaction.delete(attempts).where(eq(attempts.trainingSessionId, sessionId));
+    await transaction.delete(notes).where(eq(notes.trainingSessionId, sessionId));
+    await transaction.delete(methodologyDeviations).where(eq(methodologyDeviations.trainingSessionId, sessionId));
+    await transaction.delete(hintRecords).where(eq(hintRecords.trainingSessionId, sessionId));
+
+    // 3. Reset session phases: All phases locked (ready for startTrainingSession)
+    const phases = await loadSessionPhases(transaction, sessionId);
+    for (const p of phases) {
+      await updateSessionPhase(transaction, p.id, "locked");
+    }
+
+    // 4. Reset checks: All checks inactive, timestamps cleared
+    const checks = await transaction
+      .select()
+      .from(sessionChecks)
+      .where(eq(sessionChecks.trainingSessionId, sessionId));
+
+    for (const check of checks) {
+      await transaction
+        .update(sessionChecks)
+        .set({
+          status: "inactive",
+          completedAt: null,
+          activatedAt: null,
+          skippedAt: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(sessionChecks.id, check.id));
+    }
+  });
+}
+
+/**
+ * Renames an existing training session.
+ */
+export async function renameTrainingSessionRecord(
+  sessionId: string,
+  newName: string,
+): Promise<void> {
+  const trimmed = newName.trim();
+  if (!trimmed || trimmed.length > 255) {
+    throw new TrainingSessionError(
+      "invalid_input",
+      "Training Session name must contain 1–255 characters.",
+    );
+  }
+  if (!isValidUuid(sessionId)) {
+    throw new TrainingSessionError("not_found", "Training Session not found.");
+  }
+
+  await trainingTransaction(async (transaction) => {
+    const session = await lockTrainingSession(transaction, sessionId);
+    await updateTrainingSession(transaction, session.id, {
+      name: trimmed,
+    });
   });
 }

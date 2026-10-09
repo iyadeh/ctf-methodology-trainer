@@ -436,6 +436,62 @@ function mapSessionAction(status: TrainingSessionRecord["status"]): TrainingSess
   }
 }
 
+function formatOs(
+  os?: string | null,
+): "Linux" | "Windows" | "macOS" | "BSD" | "Android" | "Unknown" {
+  if (!os) return "Unknown";
+  const lower = os.toLowerCase().trim();
+  if (lower === "unknown" || lower === "unspecified") return "Unknown";
+  if (lower.includes("win")) return "Windows";
+  if (lower.includes("bsd")) return "BSD";
+  if (lower.includes("mac") || lower.includes("darwin") || lower.includes("ios") || lower.includes("apple")) return "macOS";
+  if (lower.includes("android")) return "Android";
+  if (
+    lower.includes("lin") ||
+    lower.includes("ubuntu") ||
+    lower.includes("debian") ||
+    lower.includes("centos") ||
+    lower.includes("rhel") ||
+    lower.includes("fedora") ||
+    lower.includes("arch") ||
+    lower.includes("kali")
+  ) {
+    return "Linux";
+  }
+  return "Unknown";
+}
+
+function formatDifficulty(
+  diff?: string | null,
+): "Easy" | "Medium" | "Hard" | "Insane" | "Unrated" {
+  if (!diff) return "Unrated";
+  const lower = diff.toLowerCase().trim();
+  if (lower === "easy") return "Easy";
+  if (lower === "medium") return "Medium";
+  if (lower === "hard") return "Hard";
+  if (lower === "insane") return "Insane";
+  return "Unrated";
+}
+
+export async function deleteTrainingSession(sessionId: string): Promise<boolean> {
+  return repository.deleteTrainingSessionRecord(sessionId);
+}
+
+export async function resetTrainingSession(
+  sessionId: string,
+): Promise<TrainingSessionAggregate> {
+  await repository.resetTrainingSessionRecord(sessionId);
+  return getTrainingSession(sessionId);
+}
+
+export async function renameTrainingSession(
+  sessionId: string,
+  newName: string,
+): Promise<TrainingSessionAggregate> {
+  await repository.renameTrainingSessionRecord(sessionId, newName);
+  return getTrainingSession(sessionId);
+}
+
 export type ListTrainingSessionsResult = {
   sessions: TrainingSessionDemo[];
   metrics: TrainingSessionMetric[];
@@ -444,36 +500,53 @@ export type ListTrainingSessionsResult = {
 export async function listTrainingSessions(): Promise<ListTrainingSessionsResult> {
   const loaded = await repository.loadAllTrainingSessions();
 
+  // Create a map of created orders based on actual createdAt timestamps (newest = 1)
+  const sortedByCreated = [...loaded].sort(
+    (a, b) => new Date(b.session.createdAt).getTime() - new Date(a.session.createdAt).getTime(),
+  );
+  const createdOrderMap = new Map(sortedByCreated.map((item, idx) => [item.session.id, idx + 1]));
+
   const sessions: TrainingSessionDemo[] = loaded.map((item, index) => {
-    const { session, checks } = item;
+    const { session, checks, profile } = item;
     const status = mapSessionStatus(session.status);
     const action = mapSessionAction(session.status);
     const progressResult = calculateCoreProgress(checks.map(toMethodologyCheck));
     const completedChecks = checks.filter((c) => c.status === "completed").length;
     const progress =
-      session.status === "completed"
-        ? 100
-        : session.status === "not_started" || completedChecks === 0
-          ? 0
+      session.status === "not_started" || completedChecks === 0
+        ? 0
+        : session.status === "completed" && completedChecks >= checks.length
+          ? 100
           : progressResult.percentage;
-    const taskProgress = `${completedChecks} of ${checks.length} tasks`;
+    const taskProgress =
+      session.status === "completed"
+        ? completedChecks === 0
+          ? `0 of ${checks.length} tasks (Objective Captured)`
+          : completedChecks >= checks.length
+            ? `${completedChecks} of ${checks.length} tasks (Full Methodology Verified)`
+            : `${completedChecks} of ${checks.length} tasks (Objective Captured)`
+        : `${completedChecks} of ${checks.length} tasks`;
     const lastAccessedDate = session.updatedAt ? new Date(session.updatedAt) : new Date(session.createdAt);
+
+    const description = session.targetIp
+      ? `Target host ${session.targetIp} assessed using PTES methodology.`
+      : profile?.summary
+        ? profile.summary
+        : `Structured penetration testing practice session for ${session.name}.`;
 
     return {
       id: session.id,
       name: session.name,
-      description: session.targetIp
-        ? `Target host ${session.targetIp} assessed using PTES methodology.`
-        : `Structured penetration testing practice session for ${session.name}.`,
+      description,
       methodology: "PTES" as const,
-      operatingSystem: "Linux" as const,
-      difficulty: "Medium" as const,
+      operatingSystem: formatOs(profile?.os),
+      difficulty: formatDifficulty(profile?.difficulty),
       status,
       progress,
       taskProgress,
       lastAccessed: formatRelativeTime(lastAccessedDate),
       lastAccessedOrder: index + 1,
-      createdOrder: index + 1,
+      createdOrder: createdOrderMap.get(session.id) ?? index + 1,
       action,
     };
   });
@@ -541,27 +614,31 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   let featuredSession: DashboardData["featuredSession"] = null;
   if (featuredItem) {
-    const { session, checks, phases } = featuredItem;
+    const { session, checks, phases, profile } = featuredItem;
     const completedChecks = checks.filter((c) => c.status === "completed").length;
     const progressResult = calculateCoreProgress(checks.map(toMethodologyCheck));
     const progress =
-      session.status === "completed"
-        ? 100
-        : session.status === "not_started" || completedChecks === 0
-          ? 0
+      session.status === "not_started" || completedChecks === 0
+        ? 0
+        : session.status === "completed" && completedChecks >= checks.length
+          ? 100
           : progressResult.percentage;
     const completedPhases = phases.filter((p) => p.status === "completed").length;
     const totalPhases = phases.length > 0 ? phases.length : 7;
     const status = mapSessionStatus(session.status) as DashboardSessionStatus;
 
+    const description = session.targetIp
+      ? `Target host ${session.targetIp} assessed using PTES methodology.`
+      : profile?.summary
+        ? profile.summary
+        : `Structured penetration testing practice session for ${session.name}.`;
+
     featuredSession = {
       id: session.id,
       name: session.name,
-      description: session.targetIp
-        ? `Target host ${session.targetIp} assessed using PTES methodology.`
-        : `Structured penetration testing practice session for ${session.name}.`,
+      description,
       status,
-      tags: ["PTES", "Linux", "Practice"] as const,
+      tags: ["PTES", formatOs(profile?.os), formatDifficulty(profile?.difficulty)],
       progress,
       completedPhases,
       totalPhases,
@@ -573,10 +650,10 @@ export async function getDashboardData(): Promise<DashboardData> {
     const completedChecks = checks.filter((c) => c.status === "completed").length;
     const progressResult = calculateCoreProgress(checks.map(toMethodologyCheck));
     const progress =
-      session.status === "completed"
-        ? 100
-        : session.status === "not_started" || completedChecks === 0
-          ? 0
+      session.status === "not_started" || completedChecks === 0
+        ? 0
+        : session.status === "completed" && completedChecks >= checks.length
+          ? 100
           : progressResult.percentage;
     const lastAccessedDate = session.updatedAt ? new Date(session.updatedAt) : new Date(session.createdAt);
 

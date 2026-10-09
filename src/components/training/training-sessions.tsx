@@ -12,6 +12,7 @@ type TrainingSessionsProps = {
   currentDateTime: string;
   sessions?: readonly TrainingSessionDemo[];
   metrics?: readonly TrainingSessionMetric[];
+  initialQuery?: string;
 };
 
 const metricCellStyles = [
@@ -90,6 +91,7 @@ export function TrainingSessions({
   currentDateTime,
   sessions,
   metrics,
+  initialQuery,
 }: TrainingSessionsProps) {
   const activeSessions = sessions ?? trainingSessionsDemoData.sessions;
 
@@ -100,7 +102,10 @@ export function TrainingSessions({
         currentDateTime={currentDateTime}
       />
       <SessionMetrics metrics={metrics} />
-      <TrainingSessionBrowser sessions={activeSessions} />
+      <TrainingSessionBrowser
+        sessions={activeSessions}
+        initialQuery={initialQuery}
+      />
     </div>
   );
 }
