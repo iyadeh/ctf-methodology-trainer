@@ -15,7 +15,20 @@ import type {
   AdvancePhaseResult,
   SessionCheckRecord,
   TrainingSessionAggregate,
+  TrainingSessionRecord,
 } from "./types";
+import type {
+  TrainingSessionAction,
+  TrainingSessionDemo,
+  TrainingSessionMetric,
+  TrainingSessionStatus,
+} from "@/components/training/training-sessions-demo-data";
+import { countAllHintRecords } from "../mentor/repository";
+import type {
+  DashboardData,
+  DashboardSessionStatus,
+  DashboardSessionSummary,
+} from "@/components/dashboard/dashboard-demo-data";
 
 export type CreateTrainingSessionInput = {
   name: string;
@@ -380,3 +393,236 @@ export {
   type RevealedReferencePathNode,
   type RevealedReferencePathEdge,
 } from "./completion";
+
+function formatRelativeTime(date: Date): string {
+  const diffMs = Date.now() - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+
+  if (diffMin < 1) return "Just now";
+  if (diffMin < 60) return `${diffMin} minute${diffMin === 1 ? "" : "s"} ago`;
+  if (diffHour < 24) return `${diffHour} hour${diffHour === 1 ? "" : "s"} ago`;
+  if (diffDay === 1) return "Yesterday";
+  return `${diffDay} days ago`;
+}
+
+function mapSessionStatus(status: TrainingSessionRecord["status"]): TrainingSessionStatus {
+  switch (status) {
+    case "in_progress":
+      return "In Progress";
+    case "paused":
+      return "Paused";
+    case "completed":
+      return "Completed";
+    case "not_started":
+    default:
+      return "Not Started";
+  }
+}
+
+function mapSessionAction(status: TrainingSessionRecord["status"]): TrainingSessionAction {
+  switch (status) {
+    case "in_progress":
+      return "Continue";
+    case "paused":
+      return "Resume";
+    case "completed":
+      return "Review";
+    case "not_started":
+    default:
+      return "View Details";
+  }
+}
+
+export type ListTrainingSessionsResult = {
+  sessions: TrainingSessionDemo[];
+  metrics: TrainingSessionMetric[];
+};
+
+export async function listTrainingSessions(): Promise<ListTrainingSessionsResult> {
+  const loaded = await repository.loadAllTrainingSessions();
+
+  const sessions: TrainingSessionDemo[] = loaded.map((item, index) => {
+    const { session, checks } = item;
+    const status = mapSessionStatus(session.status);
+    const action = mapSessionAction(session.status);
+    const progressResult = calculateCoreProgress(checks.map(toMethodologyCheck));
+    const completedChecks = checks.filter((c) => c.status === "completed").length;
+    const progress =
+      session.status === "completed"
+        ? 100
+        : session.status === "not_started" || completedChecks === 0
+          ? 0
+          : progressResult.percentage;
+    const taskProgress = `${completedChecks} of ${checks.length} tasks`;
+    const lastAccessedDate = session.updatedAt ? new Date(session.updatedAt) : new Date(session.createdAt);
+
+    return {
+      id: session.id,
+      name: session.name,
+      description: session.targetIp
+        ? `Target host ${session.targetIp} assessed using PTES methodology.`
+        : `Structured penetration testing practice session for ${session.name}.`,
+      methodology: "PTES" as const,
+      operatingSystem: "Linux" as const,
+      difficulty: "Medium" as const,
+      status,
+      progress,
+      taskProgress,
+      lastAccessed: formatRelativeTime(lastAccessedDate),
+      lastAccessedOrder: index + 1,
+      createdOrder: index + 1,
+      action,
+    };
+  });
+
+  const total = sessions.length;
+  const inProgress = sessions.filter((s) => s.status === "In Progress").length;
+  const paused = sessions.filter((s) => s.status === "Paused").length;
+  const completed = sessions.filter((s) => s.status === "Completed").length;
+
+  const metrics: TrainingSessionMetric[] = [
+    {
+      label: "Total Sessions",
+      value: total,
+      description: "Across all machines",
+    },
+    { label: "In Progress", value: inProgress, description: "Keep going" },
+    {
+      label: "Paused",
+      value: paused,
+      description: "Pick up where you left off",
+    },
+    { label: "Completed", value: completed, description: "Great progress!" },
+  ];
+
+  return { sessions, metrics };
+}
+
+export async function getDashboardData(): Promise<DashboardData> {
+  const loaded = await repository.loadAllTrainingSessions();
+  const allHintCount = await countAllHintRecords();
+
+  const inProgress = loaded.filter((item) => item.session.status === "in_progress").length;
+  const completed = loaded.filter((item) => item.session.status === "completed").length;
+  const paused = loaded.filter((item) => item.session.status === "paused").length;
+
+  const overview = [
+    {
+      label: "In Progress",
+      value: inProgress,
+      description: "Active training sessions",
+    },
+    {
+      label: "Completed",
+      value: completed,
+      description: "Machines finished",
+    },
+    {
+      label: "Paused",
+      value: paused,
+      description: "Ready when you return",
+    },
+    {
+      label: "Hints Used",
+      value: allHintCount,
+      description: "Across all sessions",
+    },
+  ];
+
+  const featuredItem =
+    loaded.find((item) => item.session.status === "in_progress") ??
+    loaded.find((item) => item.session.status === "paused") ??
+    loaded.find((item) => item.session.status === "not_started") ??
+    loaded[0] ??
+    null;
+
+  let featuredSession: DashboardData["featuredSession"] = null;
+  if (featuredItem) {
+    const { session, checks, phases } = featuredItem;
+    const completedChecks = checks.filter((c) => c.status === "completed").length;
+    const progressResult = calculateCoreProgress(checks.map(toMethodologyCheck));
+    const progress =
+      session.status === "completed"
+        ? 100
+        : session.status === "not_started" || completedChecks === 0
+          ? 0
+          : progressResult.percentage;
+    const completedPhases = phases.filter((p) => p.status === "completed").length;
+    const totalPhases = phases.length > 0 ? phases.length : 7;
+    const status = mapSessionStatus(session.status) as DashboardSessionStatus;
+
+    featuredSession = {
+      id: session.id,
+      name: session.name,
+      description: session.targetIp
+        ? `Target host ${session.targetIp} assessed using PTES methodology.`
+        : `Structured penetration testing practice session for ${session.name}.`,
+      status,
+      tags: ["PTES", "Linux", "Practice"] as const,
+      progress,
+      completedPhases,
+      totalPhases,
+    };
+  }
+
+  const recentSessions: DashboardSessionSummary[] = loaded.slice(0, 3).map((item) => {
+    const { session, checks } = item;
+    const completedChecks = checks.filter((c) => c.status === "completed").length;
+    const progressResult = calculateCoreProgress(checks.map(toMethodologyCheck));
+    const progress =
+      session.status === "completed"
+        ? 100
+        : session.status === "not_started" || completedChecks === 0
+          ? 0
+          : progressResult.percentage;
+    const lastAccessedDate = session.updatedAt ? new Date(session.updatedAt) : new Date(session.createdAt);
+
+    return {
+      id: session.id,
+      name: session.name,
+      lastAccessed: formatRelativeTime(lastAccessedDate),
+      status: mapSessionStatus(session.status) as DashboardSessionStatus,
+      progress,
+    };
+  });
+
+  const ptesPhases = [
+    { name: "Reconnaissance", keys: ["pre-engagement", "intelligence-gathering", "reconnaissance"] },
+    { name: "Threat Modeling", keys: ["threat-modeling"] },
+    { name: "Vulnerability Analysis", keys: ["vulnerability-analysis"] },
+    { name: "Exploitation", keys: ["exploitation"] },
+    { name: "Post Exploitation", keys: ["post-exploitation"] },
+    { name: "Reporting", keys: ["reporting"] },
+  ];
+
+  const methodologyProgress = ptesPhases.map((phaseDef) => {
+    const phaseChecks = loaded.flatMap((item) => {
+      const matchingPhases = item.phases.filter((p) =>
+        phaseDef.keys.some((k) => p.semanticKey.toLowerCase().includes(k)),
+      );
+      const matchingPhaseIds = new Set(matchingPhases.map((p) => p.id));
+      return item.checks.filter((c) => matchingPhaseIds.has(c.sessionPhaseId));
+    });
+
+    const completedCount = phaseChecks.filter((c) => c.status === "completed").length;
+    const totalCount = phaseChecks.filter(
+      (c) => c.priority === "required" || c.priority === "recommended",
+    ).length;
+    const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+    return {
+      name: phaseDef.name,
+      progress: Math.min(100, Math.max(0, progress)),
+    };
+  });
+
+  return {
+    featuredSession,
+    recentSessions,
+    methodologyProgress,
+    overview,
+  };
+}

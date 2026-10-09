@@ -18,6 +18,7 @@
     "test:knowledge": "vitest run tests/knowledge",
     "test:methodology": "vitest run tests/methodology",
     "test:settings": "vitest run tests/settings",
+    "test:reliability": "vitest run tests/reliability",
     "test:db": "vitest run tests/db",
     "db:up": "docker compose --env-file .env.local up -d",
     "db:down": "docker compose --env-file .env.local down",

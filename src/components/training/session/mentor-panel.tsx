@@ -244,7 +244,11 @@ export function MentorPanel({
 
       {/* Error or Notice Alert */}
       {error && (
-        <div className="border border-destructive/40 bg-destructive/10 rounded-lg p-3 text-xs text-destructive flex items-center justify-between">
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="border border-destructive/40 bg-destructive/10 rounded-lg p-3 text-xs text-destructive flex items-center justify-between"
+        >
           <span>{error}</span>
           <Button variant="outline" size="sm" onClick={() => handleAskMentor()} className="h-7 text-[11px]">
             <RefreshCw className="h-3 w-3 mr-1" /> Retry
@@ -253,7 +257,11 @@ export function MentorPanel({
       )}
 
       {checklistNotice && (
-        <div className="border border-primary/40 bg-primary/10 rounded-lg p-3 text-xs text-primary flex items-center gap-2">
+        <div
+          role="status"
+          aria-live="polite"
+          className="border border-primary/40 bg-primary/10 rounded-lg p-3 text-xs text-primary flex items-center gap-2"
+        >
           <Sparkles className="h-3.5 w-3.5" />
           <span>{checklistNotice}</span>
         </div>

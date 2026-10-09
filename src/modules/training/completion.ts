@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { findings, trainingSessions } from "@/lib/db/schema";
 import { findAttackGraphBySessionId } from "@/modules/mentor/repository";
 import {
+  isValidUuid,
   loadSessionPhases,
   lockTrainingSession,
   trainingTransaction,
@@ -146,6 +147,10 @@ export async function completeTrainingSession(
 export async function getRevealedReferencePath(
   sessionId: string,
 ): Promise<RevealedReferencePath | null> {
+  if (!isValidUuid(sessionId)) {
+    return null;
+  }
+
   const [sessionRow] = await db
     .select({
       id: trainingSessions.id,

@@ -26,7 +26,7 @@ export type TrainingSessionDemo = {
   action: TrainingSessionAction;
 };
 
-type TrainingSessionMetric = {
+export type TrainingSessionMetric = {
   label: "Total Sessions" | "In Progress" | "Paused" | "Completed";
   value: number;
   description: string;
@@ -70,7 +70,7 @@ export const trainingSessionsDemoData: TrainingSessionsDemoData = {
       action: "Continue",
     },
     {
-      id: "baseme",
+      id: "ed8d0299-c48c-45b6-8bb3-ee588522e38b",
       name: "Baseme",
       description:
         "A Linux lab for practicing structured enumeration and evidence review.",
@@ -86,7 +86,7 @@ export const trainingSessionsDemoData: TrainingSessionsDemoData = {
       action: "Resume",
     },
     {
-      id: "cap",
+      id: "5ecac19c-f6c0-461f-96f9-e1bb33739d53",
       name: "Cap",
       description:
         "A completed Windows session ready for methodology review and path comparison.",
@@ -102,7 +102,7 @@ export const trainingSessionsDemoData: TrainingSessionsDemoData = {
       action: "Review",
     },
     {
-      id: "planning",
+      id: "327de1f3-bc38-40db-b073-23c14c6fed73",
       name: "Planning",
       description:
         "An early-stage Linux session focused on building a complete attack-surface map.",
@@ -118,7 +118,7 @@ export const trainingSessionsDemoData: TrainingSessionsDemoData = {
       action: "Continue",
     },
     {
-      id: "atlas",
+      id: "4ebbfcd1-e544-42f3-b4e9-072e165a63a2",
       name: "Atlas",
       description:
         "A Windows machine prepared for a future methodology-guided assessment.",

@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "../../lib/db";
 import { loadSessionContext } from "../context/repository";
 import {
@@ -102,10 +102,21 @@ export function insertSessionChecks(
   return transaction.insert(sessionChecks).values(values);
 }
 
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function isValidUuid(id: string): boolean {
+  return typeof id === "string" && UUID_REGEX.test(id);
+}
+
 export async function lockTrainingSession(
   transaction: TrainingTransaction,
   sessionId: string,
 ): Promise<TrainingSessionRecord> {
+  if (!isValidUuid(sessionId)) {
+    throw new TrainingSessionError("not_found", "Training Session not found.");
+  }
+
   const [session] = await transaction
     .select()
     .from(trainingSessions)
@@ -241,6 +252,10 @@ export async function insertPhaseGateDeviation(
 }
 
 export async function loadTrainingSessionSnapshot(sessionId: string) {
+  if (!isValidUuid(sessionId)) {
+    throw new TrainingSessionError("not_found", "Training Session not found.");
+  }
+
   return db.transaction(
     async (transaction) => {
       const [session] = await transaction
@@ -297,4 +312,31 @@ export async function loadTrainingSessionSnapshot(sessionId: string) {
     },
     { isolationLevel: "repeatable read", accessMode: "read only" },
   );
+}
+
+export async function loadAllTrainingSessions() {
+  const allSessions = await db
+    .select()
+    .from(trainingSessions)
+    .orderBy(desc(trainingSessions.updatedAt), desc(trainingSessions.createdAt));
+
+  const allPhases = await db
+    .select()
+    .from(sessionPhases)
+    .orderBy(asc(sessionPhases.sortOrder));
+
+  const allChecks = await db
+    .select()
+    .from(sessionChecks)
+    .orderBy(asc(sessionChecks.sortOrder));
+
+  return allSessions.map((session) => {
+    const phases = allPhases.filter((p) => p.trainingSessionId === session.id);
+    const checks = allChecks.filter((c) => c.trainingSessionId === session.id);
+    return {
+      session,
+      phases,
+      checks,
+    };
+  });
 }

@@ -1,11 +1,17 @@
 import { TrainingSessionBrowser } from "@/components/training/training-session-browser";
-import { trainingSessionsDemoData } from "@/components/training/training-sessions-demo-data";
+import {
+  trainingSessionsDemoData,
+  type TrainingSessionDemo,
+  type TrainingSessionMetric,
+} from "@/components/training/training-sessions-demo-data";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 type TrainingSessionsProps = {
   currentDate: string;
   currentDateTime: string;
+  sessions?: readonly TrainingSessionDemo[];
+  metrics?: readonly TrainingSessionMetric[];
 };
 
 const metricCellStyles = [
@@ -48,11 +54,17 @@ function TrainingSessionsHeader({
   );
 }
 
-function SessionMetrics() {
+function SessionMetrics({
+  metrics,
+}: {
+  metrics?: readonly TrainingSessionMetric[];
+}) {
+  const activeMetrics = metrics ?? trainingSessionsDemoData.metrics;
+
   return (
     <Card role="region" aria-label="Training session summary" className="!gap-0 !py-0">
       <CardContent className="grid grid-cols-2 !p-0 lg:grid-cols-4">
-        {trainingSessionsDemoData.metrics.map((metric, index) => (
+        {activeMetrics.map((metric, index) => (
           <div
             key={metric.label}
             className={cn("p-4", metricCellStyles[index])}
@@ -76,15 +88,19 @@ function SessionMetrics() {
 export function TrainingSessions({
   currentDate,
   currentDateTime,
+  sessions,
+  metrics,
 }: TrainingSessionsProps) {
+  const activeSessions = sessions ?? trainingSessionsDemoData.sessions;
+
   return (
     <div className="space-y-4">
       <TrainingSessionsHeader
         currentDate={currentDate}
         currentDateTime={currentDateTime}
       />
-      <SessionMetrics />
-      <TrainingSessionBrowser sessions={trainingSessionsDemoData.sessions} />
+      <SessionMetrics metrics={metrics} />
+      <TrainingSessionBrowser sessions={activeSessions} />
     </div>
   );
 }

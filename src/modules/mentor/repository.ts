@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { count, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   attackEdges,
@@ -16,6 +16,7 @@ import type {
   SpoilerLevel,
 } from "../attack-graph/types";
 import type { HintMetrics, HintRecord, NewHintRecord } from "./types";
+import { isValidUuid } from "../training/repository";
 
 /**
  * Inserts a new hint/guidance record into the database.
@@ -33,6 +34,10 @@ export async function insertHintRecord(
 export async function findHintRecordsBySessionId(
   sessionId: string,
 ): Promise<HintRecord[]> {
+  if (!isValidUuid(sessionId)) {
+    return [];
+  }
+
   return db
     .select()
     .from(hintRecords)
@@ -46,6 +51,17 @@ export async function findHintRecordsBySessionId(
 export async function computeHintMetricsBySessionId(
   sessionId: string,
 ): Promise<HintMetrics> {
+  if (!isValidUuid(sessionId)) {
+    return {
+      totalHints: 0,
+      methodologyHints: 0,
+      conceptExplanations: 0,
+      machineSpecificHints: 0,
+      fullReveals: 0,
+      totalPenaltyPoints: 0,
+    };
+  }
+
   const rows = await db
     .select()
     .from(hintRecords)
@@ -90,6 +106,10 @@ export async function computeHintMetricsBySessionId(
 export async function findAttackGraphBySessionId(
   sessionId: string,
 ): Promise<AttackGraph | null> {
+  if (!isValidUuid(sessionId)) {
+    return null;
+  }
+
   const [graphRow] = await db
     .select()
     .from(attackGraphs)
@@ -142,3 +162,12 @@ export async function findAttackGraphBySessionId(
     createdAt: graphRow.createdAt.toISOString(),
   };
 }
+
+/**
+ * Counts all recorded hints across the entire application for overview metrics.
+ */
+export async function countAllHintRecords(): Promise<number> {
+  const [result] = await db.select({ value: count() }).from(hintRecords);
+  return Number(result?.value ?? 0);
+}
+

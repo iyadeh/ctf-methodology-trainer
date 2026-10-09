@@ -1,7 +1,8 @@
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { methodologyDeviations, sessionPhases } from "@/lib/db/schema";
-import { loadTrainingSessionSnapshot } from "../training/repository";
+import { isValidUuid, loadTrainingSessionSnapshot } from "../training/repository";
+import { TrainingSessionError } from "../training/types";
 import { getRevealedReferencePath } from "../training/completion";
 import { computeHintMetricsBySessionId } from "../mentor/repository";
 import {
@@ -14,6 +15,10 @@ import { generateReviewNarrative } from "./narrative";
 import type { MethodologyDeviationRecord, SessionReviewData } from "./types";
 
 export async function getSessionReview(sessionId: string): Promise<SessionReviewData> {
+  if (!isValidUuid(sessionId)) {
+    throw new TrainingSessionError("not_found", "Training Session not found.");
+  }
+
   // 1. Load session snapshot
   const snapshot = await loadTrainingSessionSnapshot(sessionId);
 

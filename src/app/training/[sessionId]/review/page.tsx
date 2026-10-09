@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ReviewShell } from "@/components/training/review/review-shell";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 interface ReviewPageProps {
   readonly params: Promise<{ sessionId: string }>;
 }

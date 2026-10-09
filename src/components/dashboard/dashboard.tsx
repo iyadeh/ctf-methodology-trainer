@@ -2,7 +2,9 @@ import { ArrowRight, FileUp, MonitorCog, Play } from "lucide-react";
 import Link from "next/link";
 import {
   dashboardDemoData,
+  type DashboardData,
   type DashboardSessionStatus,
+  type DashboardSessionSummary,
 } from "@/components/dashboard/dashboard-demo-data";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -19,12 +21,14 @@ import { cn } from "@/lib/utils";
 type DashboardProps = {
   currentDate: string;
   currentDateTime: string;
+  data?: DashboardData;
 };
 
 const statusStyles: Record<DashboardSessionStatus, string> = {
   "In Progress": "border-primary/25 bg-primary/10 text-primary",
   Paused: "border-amber-400/20 bg-amber-400/10 text-amber-200",
   Completed: "border-primary/20 bg-primary/5 text-primary",
+  "Not Started": "border-border bg-muted/40 text-muted-foreground",
 };
 
 const overviewCellStyles = [
@@ -93,8 +97,70 @@ function DashboardHeader({ currentDate, currentDateTime }: DashboardProps) {
   );
 }
 
-function ContinueTrainingCard() {
-  const session = dashboardDemoData.featuredSession;
+function ContinueTrainingCard({
+  session,
+}: {
+  session: DashboardData["featuredSession"];
+}) {
+  if (!session) {
+    return (
+      <Card
+        role="region"
+        aria-labelledby="continue-training-title"
+        className="h-full"
+      >
+        <CardHeader className="border-b border-border">
+          <CardTitle id="continue-training-title">Continue Training</CardTitle>
+          <CardAction>
+            <Badge variant="outline" className="border-border text-muted-foreground">
+              No Active Session
+            </Badge>
+          </CardAction>
+        </CardHeader>
+
+        <CardContent className="flex flex-1 flex-col justify-center py-8">
+          <div className="flex items-start gap-4">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/30 text-muted-foreground">
+              <MonitorCog aria-hidden="true" className="size-5" strokeWidth={1.75} />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-xl font-semibold tracking-tight text-foreground">
+                No Active Machine
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+                You haven&apos;t started any practice sessions yet. Upload a writeup or pick a target machine to begin your PTES methodology training.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-wrap gap-2">
+            <Link
+              href="/training/new"
+              aria-label="Start new training"
+              className={buttonVariants({ size: "lg" })}
+            >
+              <Play aria-hidden="true" data-icon="inline-start" strokeWidth={1.75} />
+              Start New Training
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const primaryActionHref =
+    session.status === "Completed"
+      ? `/training/${session.id}/review`
+      : `/training/${session.id}`;
+
+  const primaryActionLabel =
+    session.status === "Completed"
+      ? "Review"
+      : session.status === "In Progress"
+        ? "Continue"
+        : session.status === "Paused"
+          ? "Resume"
+          : "Start";
 
   return (
     <Card
@@ -164,12 +230,12 @@ function ContinueTrainingCard() {
 
         <div className="mt-auto flex flex-wrap gap-2 pt-6">
           <Link
-            href={`/training/${session.id}`}
-            aria-label={`Resume ${session.name} training`}
+            href={primaryActionHref}
+            aria-label={`${primaryActionLabel} ${session.name} training`}
             className={buttonVariants({ size: "lg" })}
           >
             <Play aria-hidden="true" data-icon="inline-start" strokeWidth={1.75} />
-            Resume
+            {primaryActionLabel}
           </Link>
           <Link
             href={`/training/${session.id}`}
@@ -220,7 +286,11 @@ function NewTrainingCard() {
   );
 }
 
-function RecentSessionsCard() {
+function RecentSessionsCard({
+  sessions,
+}: {
+  sessions: readonly DashboardSessionSummary[];
+}) {
   return (
     <Card
       role="region"
@@ -235,39 +305,52 @@ function RecentSessionsCard() {
       </CardHeader>
 
       <CardContent>
-        <ul className="divide-y divide-border">
-          {dashboardDemoData.recentSessions.map((session) => (
-            <li key={session.id} className="py-3 first:pt-0 last:pb-0">
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-foreground">
-                    {session.name}
-                  </p>
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                    {session.lastAccessed}
-                  </p>
+        {sessions.length === 0 ? (
+          <div className="py-8 text-center text-xs text-muted-foreground">
+            No training sessions yet. Upload your first writeup to start practicing!
+          </div>
+        ) : (
+          <ul className="divide-y divide-border">
+            {sessions.map((session) => (
+              <li key={session.id} className="py-3 first:pt-0 last:pb-0">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <Link
+                      href={`/training/${session.id}`}
+                      className="truncate text-sm font-semibold text-foreground hover:text-primary transition-colors"
+                    >
+                      {session.name}
+                    </Link>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                      {session.lastAccessed}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3">
+                    <SessionStatusBadge status={session.status} />
+                    <span className="w-9 text-right font-mono text-xs font-semibold text-foreground">
+                      {session.progress}%
+                    </span>
+                  </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-3">
-                  <SessionStatusBadge status={session.status} />
-                  <span className="w-9 text-right font-mono text-xs font-semibold text-foreground">
-                    {session.progress}%
-                  </span>
-                </div>
-              </div>
-              <Progress
-                value={session.progress}
-                aria-label={`${session.name} session progress`}
-                className="mt-2.5"
-              />
-            </li>
-          ))}
-        </ul>
+                <Progress
+                  value={session.progress}
+                  aria-label={`${session.name} session progress`}
+                  className="mt-2.5"
+                />
+              </li>
+            ))}
+          </ul>
+        )}
       </CardContent>
     </Card>
   );
 }
 
-function MethodologyProgressCard() {
+function MethodologyProgressCard({
+  progressList,
+}: {
+  progressList: readonly { name: string; progress: number }[];
+}) {
   return (
     <Card
       role="region"
@@ -282,7 +365,7 @@ function MethodologyProgressCard() {
       </CardHeader>
 
       <CardContent className="space-y-3.5">
-        {dashboardDemoData.methodologyProgress.map((phase) => (
+        {progressList.map((phase) => (
           <div key={phase.name}>
             <div className="flex items-center justify-between gap-4 text-xs">
               <span className="truncate text-muted-foreground">{phase.name}</span>
@@ -302,7 +385,11 @@ function MethodologyProgressCard() {
   );
 }
 
-function TrainingOverviewCard() {
+function TrainingOverviewCard({
+  overview,
+}: {
+  overview: readonly { description: string; label: string; value: number }[];
+}) {
   return (
     <Card
       role="region"
@@ -314,7 +401,7 @@ function TrainingOverviewCard() {
       </CardHeader>
 
       <CardContent className="grid grid-cols-2 !p-0 lg:grid-cols-4">
-        {dashboardDemoData.overview.map((metric, index) => (
+        {overview.map((metric, index) => (
           <div
             key={metric.label}
             className={cn("p-4", overviewCellStyles[index])}
@@ -333,7 +420,12 @@ function TrainingOverviewCard() {
   );
 }
 
-export function Dashboard({ currentDate, currentDateTime }: DashboardProps) {
+export function Dashboard({ currentDate, currentDateTime, data }: DashboardProps) {
+  const featuredSession = data ? data.featuredSession : dashboardDemoData.featuredSession;
+  const recentSessions = data ? data.recentSessions : dashboardDemoData.recentSessions;
+  const methodologyProgress = data ? data.methodologyProgress : dashboardDemoData.methodologyProgress;
+  const overview = data ? data.overview : dashboardDemoData.overview;
+
   return (
     <div className="space-y-4">
       <DashboardHeader
@@ -343,7 +435,7 @@ export function Dashboard({ currentDate, currentDateTime }: DashboardProps) {
 
       <div className="grid gap-4 xl:grid-cols-12">
         <div className="xl:col-span-8">
-          <ContinueTrainingCard />
+          <ContinueTrainingCard session={featuredSession} />
         </div>
         <div className="xl:col-span-4">
           <NewTrainingCard />
@@ -352,14 +444,14 @@ export function Dashboard({ currentDate, currentDateTime }: DashboardProps) {
 
       <div className="grid gap-4 xl:grid-cols-12">
         <div className="xl:col-span-8">
-          <RecentSessionsCard />
+          <RecentSessionsCard sessions={recentSessions} />
         </div>
         <div className="xl:col-span-4">
-          <MethodologyProgressCard />
+          <MethodologyProgressCard progressList={methodologyProgress} />
         </div>
       </div>
 
-      <TrainingOverviewCard />
+      <TrainingOverviewCard overview={overview} />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-export type DashboardSessionStatus = "In Progress" | "Paused" | "Completed";
+export type DashboardSessionStatus = "In Progress" | "Paused" | "Completed" | "Not Started";
 
 export type DashboardSessionSummary = {
   id: string;
@@ -8,17 +8,19 @@ export type DashboardSessionSummary = {
   status: DashboardSessionStatus;
 };
 
-type DashboardDemoData = {
-  featuredSession: {
-    id: string;
-    completedPhases: number;
-    description: string;
-    name: string;
-    progress: number;
-    status: DashboardSessionStatus;
-    tags: readonly string[];
-    totalPhases: number;
-  };
+export type DashboardFeaturedSession = {
+  id: string;
+  completedPhases: number;
+  description: string;
+  name: string;
+  progress: number;
+  status: DashboardSessionStatus;
+  tags: readonly string[];
+  totalPhases: number;
+};
+
+export type DashboardData = {
+  featuredSession: DashboardFeaturedSession | null;
   methodologyProgress: readonly {
     name: string;
     progress: number;
@@ -53,14 +55,14 @@ export const dashboardDemoData = {
       progress: 42,
     },
     {
-      id: "baseme",
+      id: "ed8d0299-c48c-45b6-8bb3-ee588522e38b",
       name: "Baseme",
       lastAccessed: "Last accessed yesterday",
       status: "Paused",
       progress: 28,
     },
     {
-      id: "cap",
+      id: "5ecac19c-f6c0-461f-96f9-e1bb33739d53",
       name: "Cap",
       lastAccessed: "Last accessed 4 days ago",
       status: "Completed",
@@ -97,4 +99,4 @@ export const dashboardDemoData = {
       description: "Across all sessions",
     },
   ],
-} as const satisfies DashboardDemoData;
+} as const satisfies DashboardData;

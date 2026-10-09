@@ -5,6 +5,9 @@ import { TrainingSessionError, type TrainingSessionAggregate } from "@/modules/t
 import { getSessionHintsAndMetrics } from "@/modules/mentor/service";
 import { SessionWorkspace } from "@/components/training/session/session-workspace";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 interface SessionPageProps {
   readonly params: Promise<{ sessionId: string }>;
 }
