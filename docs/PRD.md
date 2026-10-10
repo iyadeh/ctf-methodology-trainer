@@ -38,6 +38,7 @@ Aplikasi bertugas menjaga agar user bekerja berdasarkan methodology, mencatat ev
 
 Core flow:
 
+```text
 Writeup
 → AI Analysis
 → Hidden Machine Knowledge
@@ -51,6 +52,7 @@ Writeup
 → Post Exploitation
 → Reporting
 → Session Review
+```
 
 ---
 
@@ -66,6 +68,7 @@ Tujuan utama aplikasi adalah:
 
 Mental model yang ingin dibentuk:
 
+```text
 Observe
 → Enumerate
 → Record Evidence
@@ -77,14 +80,17 @@ Observe
 → Escalate
 → Document
 → Review
+```
 
 Bukan:
 
+```text
 Nmap
 → Gobuster
 → Exploit
 → LinPEAS
 → Root
+```
 
 Machine boleh berubah.
 
@@ -329,6 +335,7 @@ Future support dapat mencakup:
 
 Pipeline:
 
+```text
 Writeup Upload
 → File Validation
 → Document Parser
@@ -339,6 +346,7 @@ Writeup Upload
 → Automated Verification
 → Hidden Knowledge Storage
 → Training Session Creation
+```
 
 User hanya melihat processing status.
 
@@ -423,11 +431,13 @@ Output harus structured JSON.
 
 Semua AI-generated structured data wajib melewati:
 
+```text
 Gemini
 → Structured Output
 → Zod Validation
 → Application Logic
 → Database
+```
 
 AI output tidak boleh langsung menjadi trusted application state.
 
@@ -468,6 +478,7 @@ Attack Graph merepresentasikan machine-specific solution dependency.
 
 Contoh:
 
+```text
 Port Discovery
 → HTTP Enumeration
 → Content Discovery
@@ -477,9 +488,11 @@ Port Discovery
 → Local Enumeration
 → Sudo Misconfiguration
 → Root
+```
 
 Graph dapat memiliki branching:
 
+```text
 HTTP
 ├── Directory Enumeration
 └── Client-Side Analysis
@@ -487,6 +500,7 @@ HTTP
    Credential Discovery
         ↓
        SSH
+```
 
 Attack Graph merupakan machine-specific source of truth.
 
@@ -773,6 +787,7 @@ HTTP Playbook dapat menjadi applicable melalui Playbook Resolver. Hidden Graph d
 
 Flow:
 
+```text
 Hidden Knowledge
     X
     |
@@ -783,6 +798,7 @@ Confirmed User Evidence
 → Context Engine
 → Playbook Resolver
 → Visible Checklist
+```
 
 ---
 
@@ -892,6 +908,7 @@ HTTP Playbook:
 
 Flow:
 
+```text
 Confirmed Context
 → Playbook Resolver
 
@@ -901,6 +918,7 @@ If known playbook exists:
 If no playbook exists:
 → Generic Fallback
 → Optional AI Contextual Extension
+```
 
 ---
 
@@ -1274,9 +1292,11 @@ Inspect accessible backup content.
 
 Flow:
 
+```text
 Hypothesis
 → Attempt
 → Result
+```
 
 Possible outcomes:
 
@@ -1390,12 +1410,14 @@ Exploitation dilakukan ketika evidence dan hypothesis cukup.
 
 Preferred workflow:
 
+```text
 Evidence
 → Finding
 → Hypothesis
 → Test
 → Confirmed
 → Exploitation
+```
 
 Aplikasi tidak boleh mendorong user menuju exact hidden solution hanya karena attack graph mengetahuinya.
 
@@ -1994,6 +2016,7 @@ Digunakan untuk menjaga visual quality dan menghindari generic AI frontend.
 
 AI responsibilities:
 
+```text
 Gemini
 ├── Fact Extractor
 ├── Attack Graph Generator
@@ -2002,6 +2025,7 @@ Gemini
 ├── Hint Generator
 ├── Concept Explainer
 └── Mentor
+```
 
 Tidak menggunakan satu giant prompt.
 
@@ -2051,11 +2075,13 @@ Writeup processing harus idempotent.
 
 Generate:
 
+```text
 Writeup Hash
 → Generation Run
 → Facts
 → Attack Graph
 → Verification
+```
 
 Reload page tidak boleh memicu regeneration otomatis.
 
@@ -2246,6 +2272,7 @@ ContextObservation
 
 # 90. High-Level Domain Relationships
 
+```text
 Writeup
 → GenerationRun
 → MachineProfile
@@ -2268,6 +2295,7 @@ TrainingSession
 ├── Note
 ├── ContextObservation
 └── MethodologyDeviation
+```
 
 ---
 
@@ -2279,6 +2307,7 @@ localhost.
 
 Environment:
 
+```text
 Windows Host
 ├── CTF Methodology Trainer
 ├── PostgreSQL
@@ -2286,6 +2315,7 @@ Windows Host
 └── Virtualization
     ├── Kali Linux
     └── Vulnerable Target VM
+```
 
 Target VM tidak dikelola aplikasi.
 
@@ -2398,23 +2428,31 @@ if service === "smb"
 
 Do not allow:
 
+```text
 HiddenGraph
 → directly activate checklist
+```
 
 Do not allow:
 
+```text
 Gemini
 → set phaseComplete = true
+```
 
 Do not allow:
 
+```text
 AI suggested check
 → required Phase Gate check
+```
 
 Do not allow:
 
+```text
 playbook update
 → silently rewrite old session checklist
+```
 
 ---
 
@@ -2622,10 +2660,12 @@ Possible future additions:
 
 ## Paste Output Intelligence
 
+```text
 Command Output
 → AI candidate observations
 → user confirmation
 → context activation
+```
 
 ## Learning Analytics
 
