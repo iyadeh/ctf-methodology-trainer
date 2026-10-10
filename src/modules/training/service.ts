@@ -497,6 +497,61 @@ export type ListTrainingSessionsResult = {
   metrics: TrainingSessionMetric[];
 };
 
+/**
+ * Detects if a summary text contains exploit details, CVEs, credentials, or solution spoilers.
+ */
+export function containsExploitSpoilers(text: string): boolean {
+  const spoilerPatterns = [
+    /\bexploit(ing|ed|s)?\b/i,
+    /\bvulnerabilit(y|ies)\b/i,
+    /\bcve-\d+/i,
+    /\bexploit-db\b/i,
+    /\binitial foothold\b/i,
+    /\bprivilege escalation\b/i,
+    /\broot (access|was achieved|flag)\b/i,
+    /\buser flag\b/i,
+    /\bcredentials? (were|was)? leaked?\b/i,
+    /\bpassword reuse\b/i,
+    /\bplaintext (credentials?|passwords?)\b/i,
+    /\bextracted credentials?\b/i,
+    /\b(sqli|sql injection|idor|lfi|rfi|buffer overflow|kerberoasting|as-rep|bloodhound|suid|cap_setuid)\b/i,
+    /\/(etc|var|tmp|root)\/[a-z0-9_.-]+/i,
+  ];
+  return spoilerPatterns.some((pattern) => pattern.test(text));
+}
+
+/**
+ * Ensures session description on cards never leaks exploit solutions prior to completion.
+ */
+export function formatSpoilerSafeSessionDescription(
+  session: { name: string; status: string; targetIp?: string | null },
+  profile?: { summary?: string | null; os?: string | null; difficulty?: string | null } | null,
+): string {
+  if (session.targetIp) {
+    return `Target host ${session.targetIp} assessed using PTES methodology.`;
+  }
+
+  // If completed, summary is allowed
+  if (session.status === "completed") {
+    if (profile?.summary) {
+      return profile.summary;
+    }
+    return `Completed penetration testing session for ${session.name}. Full attack path and methodology review unlocked.`;
+  }
+
+  // For uncompleted sessions (not_started, in_progress, paused), check if summary is spoiler-free
+  if (profile?.summary && !containsExploitSpoilers(profile.summary)) {
+    return profile.summary;
+  }
+
+  // Safe default for uncompleted sessions
+  const osLabel =
+    profile?.os && profile.os !== "unknown"
+      ? `${profile.os.charAt(0).toUpperCase() + profile.os.slice(1)} `
+      : "";
+  return `Structured penetration testing practice session for ${session.name}. Practice methodical ${osLabel}enumeration and assessment via PTES.`;
+}
+
 export async function listTrainingSessions(): Promise<ListTrainingSessionsResult> {
   const loaded = await repository.loadAllTrainingSessions();
 
@@ -528,11 +583,7 @@ export async function listTrainingSessions(): Promise<ListTrainingSessionsResult
         : `${completedChecks} of ${checks.length} tasks`;
     const lastAccessedDate = session.updatedAt ? new Date(session.updatedAt) : new Date(session.createdAt);
 
-    const description = session.targetIp
-      ? `Target host ${session.targetIp} assessed using PTES methodology.`
-      : profile?.summary
-        ? profile.summary
-        : `Structured penetration testing practice session for ${session.name}.`;
+    const description = formatSpoilerSafeSessionDescription(session, profile);
 
     return {
       id: session.id,
@@ -627,11 +678,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     const totalPhases = phases.length > 0 ? phases.length : 7;
     const status = mapSessionStatus(session.status) as DashboardSessionStatus;
 
-    const description = session.targetIp
-      ? `Target host ${session.targetIp} assessed using PTES methodology.`
-      : profile?.summary
-        ? profile.summary
-        : `Structured penetration testing practice session for ${session.name}.`;
+    const description = formatSpoilerSafeSessionDescription(session, profile);
 
     featuredSession = {
       id: session.id,

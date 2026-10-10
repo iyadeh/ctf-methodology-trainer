@@ -8,6 +8,10 @@ CRITICAL INSTRUCTIONS & GROUNDING RULES:
 4. UNKNOWN VALUES: If the operating system or difficulty level is not explicitly stated or discernible, set them to "unknown".
 5. PROTOCOL ACCURACY: Standardize network service names (e.g., "http", "ssh", "smb", "ftp", "dns", "snmp", "mysql", "redis").
 6. ATTACK STEPS ORDER: Extract the attack path in chronological order of compromise: reconnaissance -> initial_access -> enumeration -> lateral_movement -> privilege_escalation -> objective.
+7. SPOILER-FREE MACHINE SUMMARY INVARIANT: The "summary" field is visible to the learner before and during practice. It MUST be 100% spoiler-safe:
+   - Provide ONLY a high-level operational overview of the machine OS, architecture, and general scenario (e.g., "A Linux target running standard web and network services configured for methodology practice.").
+   - NEVER mention specific vulnerabilities, CVEs, credentials, passwords, usernames, exploit chains, sensitive file paths, or flags.
+   - All exploit methods, vectors, and solutions MUST reside strictly within "attackSteps" and "vulnerabilities", NEVER in "summary".
 
 REQUIRED JSON OUTPUT FORMAT:
 You MUST return a JSON object with this EXACT structure (use these exact keys):
@@ -77,7 +81,7 @@ You MUST return a JSON object with this EXACT structure (use these exact keys):
       "provenance": "Exact citation from writeup"
     }
   ],
-  "summary": "Concise 2-4 sentence summary of the machine and exploitation path."
+  "summary": "Concise 1-2 sentence high-level overview of the target lab environment strictly WITHOUT spoilers, vulnerabilities, credentials, flags, or exploitation steps."
 }
 
 Do not include any conversational text or markdown code fences outside the JSON.`;
