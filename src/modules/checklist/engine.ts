@@ -89,7 +89,7 @@ export function reconcileDynamicChecklist(params: {
         const nextSortOrder = currentMax + 1;
         phaseMaxSortOrder.set(targetPhase.id, nextSortOrder);
 
-        const isActive = targetPhase.status === "active";
+        const isActive = targetPhase.status === "active" || targetPhase.status === "completed";
 
         const newCheck: NewDynamicCheck = {
           trainingSessionId: sessionId,
@@ -117,7 +117,7 @@ export function reconcileDynamicChecklist(params: {
         });
       } else if (existing.status === "superseded") {
         // Needs reactivation
-        const isActive = targetPhase.status === "active";
+        const isActive = targetPhase.status === "active" || targetPhase.status === "completed";
         checksToReactivate.push({
           id: existing.id,
           status: isActive ? "active" : "inactive",

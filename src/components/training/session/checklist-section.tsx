@@ -27,8 +27,10 @@ import {
 interface ChecklistSectionProps {
   readonly sessionId: string;
   readonly currentPhase: SessionPhaseSnapshot | null;
+  readonly viewedPhase?: SessionPhaseSnapshot | null;
   readonly isFinalPhase: boolean;
   readonly isCompleted?: boolean;
+  readonly onReturnToActivePhase?: () => void;
 }
 
 interface ChecklistGroup {
@@ -102,8 +104,10 @@ function groupChecks(checks: SessionCheckRecord[]): ChecklistGroup[] {
 export function ChecklistSection({
   sessionId,
   currentPhase,
+  viewedPhase,
   isFinalPhase,
   isCompleted = false,
+  onReturnToActivePhase,
 }: ChecklistSectionProps) {
   const [isPending, startTransition] = useTransition();
   const [blockedGate, setBlockedGate] = useState<{
@@ -113,7 +117,9 @@ export function ChecklistSection({
   const [showOverrideInput, setShowOverrideInput] = useState(false);
   const [advanceError, setAdvanceError] = useState<string | null>(null);
 
-  if (!currentPhase) {
+  const displayPhase = viewedPhase ?? currentPhase;
+
+  if (!displayPhase) {
     return (
       <Card className="m-6 border-dashed text-center">
         <CardContent className="py-12">
@@ -127,10 +133,20 @@ export function ChecklistSection({
     );
   }
 
-  const groups = groupChecks(currentPhase.checks);
+  const isViewingActivePhase = Boolean(
+    currentPhase && displayPhase.semanticKey === currentPhase.semanticKey,
+  );
+  const isPastPhase = Boolean(
+    currentPhase &&
+      displayPhase.status === "completed" &&
+      displayPhase.semanticKey !== currentPhase.semanticKey,
+  );
+  const isLockedPhase = displayPhase.status === "locked";
+
+  const groups = groupChecks(displayPhase.checks);
 
   const handleToggleCheck = (check: SessionCheckRecord) => {
-    if (isCompleted || check.status === "superseded" || check.status === "inactive") return;
+    if (isCompleted || isLockedPhase || check.status === "superseded" || check.status === "inactive") return;
 
     startTransition(async () => {
       if (check.status === "completed") {
@@ -142,14 +158,14 @@ export function ChecklistSection({
   };
 
   const handleSkipCheck = (checkId: string) => {
-    if (isCompleted) return;
+    if (isCompleted || isLockedPhase) return;
     startTransition(async () => {
       await skipCheckAction(sessionId, checkId);
     });
   };
 
   const handleResetCheck = (checkId: string) => {
-    if (isCompleted) return;
+    if (isCompleted || isLockedPhase) return;
     startTransition(async () => {
       await resetCheckAction(sessionId, checkId);
     });
@@ -186,6 +202,56 @@ export function ChecklistSection({
           <span>
             Training session is completed. All checklist items are locked in read-only mode.
           </span>
+        </div>
+      )}
+
+      {isPastPhase && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3.5 text-xs text-foreground">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className="border-emerald-500/40 bg-emerald-500/10 text-emerald-400 font-mono text-[10px] uppercase">
+              Inspection Mode
+            </Badge>
+            <span className="text-muted-foreground">
+              Viewing <strong className="text-foreground">{displayPhase.name}</strong> (Completed). You can retrospectively complete or update checks here to improve methodology coverage.
+            </span>
+          </div>
+          {onReturnToActivePhase && currentPhase && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={onReturnToActivePhase}
+              className="gap-1.5 text-xs font-medium border-primary/40 text-primary hover:bg-primary/10 shrink-0"
+            >
+              Jump to Active Phase: {currentPhase.name}
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
+      )}
+
+      {isLockedPhase && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-lg border border-border bg-card/60 p-3.5 text-xs text-foreground">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className="border-border text-muted-foreground font-mono text-[10px] uppercase">
+              Preview Mode
+            </Badge>
+            <span className="text-muted-foreground">
+              Previewing <strong className="text-foreground">{displayPhase.name}</strong> (Locked). These methodology checks will activate when this phase is reached.
+            </span>
+          </div>
+          {onReturnToActivePhase && currentPhase && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={onReturnToActivePhase}
+              className="gap-1.5 text-xs font-medium border-primary/40 text-primary hover:bg-primary/10 shrink-0"
+            >
+              Jump to Active Phase: {currentPhase.name}
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       )}
 
@@ -341,7 +407,7 @@ export function ChecklistSection({
         );
       })}
 
-      {/* Advance Phase Button */}
+      {/* Advance Phase or Return to Active Phase */}
       <div className="flex flex-col items-end gap-2 border-t border-border/80 pt-4">
         {advanceError && <p className="text-xs text-destructive">{advanceError}</p>}
         {isCompleted ? (
@@ -349,21 +415,36 @@ export function ChecklistSection({
             <CheckCircle2 className="h-4 w-4 text-emerald-400" />
             Assessment completed & locked. Reference path unlocked.
           </div>
-        ) : !isFinalPhase ? (
-          <Button
-            type="button"
-            onClick={() => handleAdvance(false)}
-            disabled={isPending}
-            className="gap-2 font-medium"
-          >
-            Advance to Next Phase
-            <ArrowRight className="h-4 w-4" />
-          </Button>
+        ) : isViewingActivePhase ? (
+          !isFinalPhase ? (
+            <Button
+              type="button"
+              onClick={() => handleAdvance(false)}
+              disabled={isPending}
+              className="gap-2 font-medium"
+            >
+              Advance to Next Phase
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          ) : (
+            <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
+              <CheckCircle2 className="h-4 w-4 text-primary" />
+              Final phase reached (Reporting). Complete session when finished.
+            </div>
+          )
         ) : (
-          <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
-            <CheckCircle2 className="h-4 w-4 text-primary" />
-            Final phase reached (Reporting). Complete session when finished.
-          </div>
+          onReturnToActivePhase && currentPhase && (
+            <Button
+              type="button"
+              size="sm"
+              variant="default"
+              onClick={onReturnToActivePhase}
+              className="gap-2 font-medium"
+            >
+              Return to Active Phase: {currentPhase.name}
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          )
         )}
       </div>
 

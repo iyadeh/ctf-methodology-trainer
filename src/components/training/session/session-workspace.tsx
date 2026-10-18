@@ -42,9 +42,12 @@ export function SessionWorkspace({
   const [activeTab, setActiveTab] = useState<TabType>(
     isCompleted && revealedReferencePath?.available ? "reference-path" : "checklist",
   );
+  const [selectedPhaseKey, setSelectedPhaseKey] = useState<string | null>(null);
 
   const { session, phases, currentPhase, findings, hypotheses, attempts, notes, context } =
     aggregate;
+
+  const viewedPhase = phases.find((p) => p.semanticKey === selectedPhaseKey) ?? currentPhase ?? phases[0];
 
   const currentPhaseIndex = currentPhase
     ? phases.findIndex((p) => p.semanticKey === currentPhase.semanticKey)
@@ -79,6 +82,11 @@ export function SessionWorkspace({
       <PhaseStepper
         phases={phases}
         currentPhaseKey={currentPhase?.semanticKey ?? null}
+        viewedPhaseKey={viewedPhase?.semanticKey ?? null}
+        onSelectPhase={(phaseKey) => {
+          setSelectedPhaseKey(phaseKey);
+          setActiveTab("checklist");
+        }}
       />
 
       {/* Tabs navigation */}
@@ -124,8 +132,12 @@ export function SessionWorkspace({
           <ChecklistSection
             sessionId={session.id}
             currentPhase={currentPhase}
+            viewedPhase={viewedPhase}
             isFinalPhase={isFinalPhase}
             isCompleted={isCompleted}
+            onReturnToActivePhase={() => {
+              setSelectedPhaseKey(null);
+            }}
           />
         )}
         {activeTab === "findings" && (
