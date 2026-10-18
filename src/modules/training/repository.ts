@@ -303,6 +303,11 @@ export async function loadTrainingSessionSnapshot(sessionId: string) {
         .from(notes)
         .where(eq(notes.trainingSessionId, sessionId))
         .orderBy(asc(notes.createdAt), asc(notes.id));
+      const sessionDeviations = await transaction
+        .select()
+        .from(methodologyDeviations)
+        .where(eq(methodologyDeviations.trainingSessionId, sessionId))
+        .orderBy(asc(methodologyDeviations.createdAt));
 
       return {
         session,
@@ -312,6 +317,7 @@ export async function loadTrainingSessionSnapshot(sessionId: string) {
         hypotheses: sessionHypotheses,
         attempts: sessionAttempts,
         notes: sessionNotes,
+        deviations: sessionDeviations,
         context: await loadSessionContext(transaction, sessionId),
       };
     },

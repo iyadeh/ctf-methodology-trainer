@@ -2,6 +2,7 @@ import type {
   attempts,
   findings,
   hypotheses,
+  methodologyDeviations,
   notes,
   sessionChecks,
   sessionPhases,
@@ -17,6 +18,7 @@ export type FindingRecord = typeof findings.$inferSelect;
 export type HypothesisRecord = typeof hypotheses.$inferSelect;
 export type AttemptRecord = typeof attempts.$inferSelect;
 export type NoteRecord = typeof notes.$inferSelect;
+export type MethodologyDeviationRecord = typeof methodologyDeviations.$inferSelect;
 
 export type SessionPhaseSnapshot = SessionPhaseRecord & {
   checks: SessionCheckRecord[];
@@ -31,6 +33,7 @@ export type TrainingSessionAggregate = {
   attempts: AttemptRecord[];
   notes: NoteRecord[];
   context: SessionContextWithEvidence[];
+  deviations?: MethodologyDeviationRecord[];
   progress: {
     required: ProgressResult;
     coverage: ProgressResult;

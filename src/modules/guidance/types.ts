@@ -60,6 +60,8 @@ export interface VisibleGuidanceState {
     readonly description?: string;
   }[];
   readonly recentAttemptsCount: number;
+  readonly failedAttemptsCount?: number;
+  readonly deviationsCount?: number;
 }
 
 export interface GuidancePromptContext {

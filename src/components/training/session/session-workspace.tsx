@@ -43,6 +43,14 @@ export function SessionWorkspace({
     isCompleted && revealedReferencePath?.available ? "reference-path" : "checklist",
   );
   const [selectedPhaseKey, setSelectedPhaseKey] = useState<string | null>(null);
+  const [mentorPrefilledQuery, setMentorPrefilledQuery] = useState<string | null>(null);
+  const [mentorFocusTitle, setMentorFocusTitle] = useState<string | null>(null);
+
+  const handleConsultMentor = (query: string, focusTitle?: string) => {
+    setMentorPrefilledQuery(query);
+    setMentorFocusTitle(focusTitle ?? null);
+    setActiveTab("mentor");
+  };
 
   const { session, phases, currentPhase, findings, hypotheses, attempts, notes, context } =
     aggregate;
@@ -154,6 +162,7 @@ export function SessionWorkspace({
             attempts={attempts}
             findings={findings}
             isCompleted={isCompleted}
+            onConsultMentor={handleConsultMentor}
           />
         )}
         {activeTab === "notes" && (
@@ -170,8 +179,13 @@ export function SessionWorkspace({
             currentPhaseName={currentPhase?.name || "Reconnaissance"}
             currentPhaseKey={currentPhase?.semanticKey || "reconnaissance"}
             activeCheckTitle={currentPhase?.checks.find((c) => c.status === "active")?.title}
+            activeFocusTitle={mentorFocusTitle ?? undefined}
             initialHints={initialHints}
             initialMetrics={initialMetrics}
+            findings={findings}
+            deviations={aggregate.deviations}
+            attempts={attempts}
+            prefilledQuery={mentorPrefilledQuery}
           />
         )}
         {activeTab === "reference-path" && (

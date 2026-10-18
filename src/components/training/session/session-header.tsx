@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  AlertTriangle,
   CheckCircle2,
   Edit2,
   Lock,
@@ -186,6 +187,19 @@ export function SessionHeader({ aggregate }: SessionHeaderProps) {
             {currentPhase && (
               <Badge variant="outline" className="border-primary/40 text-primary font-mono text-[11px]">
                 {currentPhase.name}
+              </Badge>
+            )}
+            {aggregate.deviations && aggregate.deviations.length > 0 && (
+              <Badge
+                variant="outline"
+                className="border-amber-500/50 bg-amber-500/10 text-amber-400 font-mono text-[11px] gap-1"
+                title={`${aggregate.deviations.length} methodology deviation(s) recorded: Phase gate was overridden without completing all required checks.`}
+              >
+                <AlertTriangle className="h-3 w-3" />
+                <span>
+                  {aggregate.deviations.length} Override
+                  {aggregate.deviations.length > 1 ? "s" : ""}
+                </span>
               </Badge>
             )}
           </div>

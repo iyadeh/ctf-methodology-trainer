@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Lightbulb, Lock, Pencil, Plus, X } from "lucide-react";
+import { Compass, Lightbulb, Lock, Pencil, Plus, Shield, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +22,7 @@ interface HypothesesPanelProps {
   readonly attempts: readonly AttemptRecord[];
   readonly findings: readonly FindingRecord[];
   readonly isCompleted?: boolean;
+  readonly onConsultMentor?: (query: string, focusTitle?: string) => void;
 }
 
 export function HypothesesPanel({
@@ -30,6 +31,7 @@ export function HypothesesPanel({
   attempts,
   findings,
   isCompleted = false,
+  onConsultMentor,
 }: HypothesesPanelProps) {
   const [isPending, startTransition] = useTransition();
   const [showAddHypothesis, setShowAddHypothesis] = useState(false);
@@ -479,6 +481,33 @@ export function HypothesesPanel({
 
                     {!isCompleted && (
                       <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-start">
+                        {onConsultMentor && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              const details = [
+                                hypothesis.reasoning ? `Reasoning: ${hypothesis.reasoning}` : null,
+                                hypothesis.testApproach ? `Approach: ${hypothesis.testApproach}` : null,
+                                linkedFinding ? `Evidence: ${linkedFinding.title}` : null,
+                              ]
+                                .filter(Boolean)
+                                .join(" | ");
+
+                              const query = details
+                                ? `How should I test the hypothesis: "${hypothesis.hypothesis}"? (${details})`
+                                : `How should I test the hypothesis: "${hypothesis.hypothesis}"?`;
+
+                              onConsultMentor(query, `Hypothesis: ${hypothesis.hypothesis}`);
+                            }}
+                            className="gap-1 text-xs text-muted-foreground hover:text-primary"
+                            title="Ask AI Mentor for advice on verifying this hypothesis"
+                          >
+                            <Compass className="h-3 w-3" />
+                            Ask Mentor
+                          </Button>
+                        )}
                         <Button
                           type="button"
                           size="sm"
@@ -523,9 +552,20 @@ export function HypothesesPanel({
                   {/* Form to record attempt under this hypothesis */}
                   {isRecordingAttempt && (
                     <div className="rounded border border-primary/30 bg-card p-4 space-y-3">
-                      <h4 className="text-xs font-semibold text-primary uppercase tracking-wider">
-                        Record Verification Attempt
-                      </h4>
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-semibold text-primary uppercase tracking-wider">
+                          Record Verification Attempt
+                        </h4>
+                        <span className="text-[10px] font-mono text-muted-foreground">
+                          HYPOTHESIS BEFORE ACTION
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground bg-primary/[0.03] p-2 rounded border border-primary/20">
+                        <Shield className="h-3.5 w-3.5 text-primary shrink-0" />
+                        <span>
+                          Documenting this attempt links execution directly to hypothesis <em>&ldquo;{hypothesis.hypothesis}&rdquo;</em>.
+                        </span>
+                      </div>
                       <div>
                         <label htmlFor={`act-${hypothesis.id}`} className="block text-xs font-medium text-foreground">
                           Action / Command Run *

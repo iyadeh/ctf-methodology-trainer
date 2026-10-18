@@ -31,28 +31,77 @@ import {
   type SpoilerLevel,
 } from "@/modules/guidance/types";
 import { calculateSpoilerPenalty } from "@/modules/guidance/engine";
+import type { AttemptRecord, FindingRecord, MethodologyDeviationRecord } from "@/modules/training/types";
+import { phaseMetadataMap } from "@/modules/methodology/reference";
 
 interface MentorPanelProps {
   readonly sessionId: string;
   readonly currentPhaseName: string;
   readonly currentPhaseKey: string;
   readonly activeCheckTitle?: string;
+  readonly activeFocusTitle?: string;
   readonly initialHints?: readonly HintRecord[];
   readonly initialMetrics?: HintMetrics;
+  readonly findings?: readonly FindingRecord[];
+  readonly deviations?: readonly MethodologyDeviationRecord[];
+  readonly attempts?: readonly AttemptRecord[];
+  readonly prefilledQuery?: string | null;
 }
 
-const PRESET_QUESTIONS = [
-  "How should I structure my initial enumeration?",
-  "What is the difference between active and passive scanning?",
-  "I found an open web port, what are the next verification steps?",
-  "What are common misconfigurations to look for on this service?",
-];
+function getDynamicPresetQuestions(
+  phaseKey: string,
+  confirmedServices: string[],
+  hasDeviations: boolean,
+  hasFailedAttempts: boolean,
+): string[] {
+  const questions: string[] = [];
+
+  // Phase-specific questions
+  if (phaseKey === "reconnaissance") {
+    questions.push("What is the most effective scanning sequence for this phase?");
+    questions.push("How should I verify service versions before proceeding?");
+  } else if (phaseKey === "threat-modeling") {
+    questions.push("How do I identify trust boundaries across my confirmed services?");
+    questions.push("Which confirmed open service represents the highest-priority attack surface?");
+  } else if (phaseKey === "vulnerability-analysis") {
+    questions.push("How do I search for public CVEs matching my confirmed service versions?");
+    questions.push("How should I formulate a testable hypothesis before running exploit tools?");
+  } else if (phaseKey === "exploitation") {
+    questions.push("What prerequisites must be verified before executing this attack payload?");
+    questions.push("How do I stabilize an interactive reverse shell connection?");
+  } else if (phaseKey === "post-exploitation") {
+    questions.push("What local enumeration commands should I run first upon gaining a shell?");
+    questions.push("How do I check sudo privileges and SUID binaries for privilege escalation?");
+  }
+
+  // Service-specific questions
+  if (confirmedServices.some((s) => s.includes("http"))) {
+    questions.push("What wordlists and flags are recommended for HTTP directory fuzzing?");
+  }
+  if (confirmedServices.some((s) => s.includes("ssh"))) {
+    questions.push("How do I audit supported SSH authentication methods without locking accounts?");
+  }
+  if (confirmedServices.some((s) => s.includes("smb"))) {
+    questions.push("How do I enumerate SMB shares and null sessions safely?");
+  }
+
+  // Situation-specific questions
+  if (hasFailedAttempts) {
+    questions.push("My exploit attempt failed. How can I verify if the vulnerability actually exists?");
+  }
+  if (hasDeviations) {
+    questions.push("I bypassed a phase gate earlier. What required checks should I revisit?");
+  }
+
+  return questions.slice(0, 5);
+}
 
 export function MentorPanel({
   sessionId,
   currentPhaseName,
   currentPhaseKey,
   activeCheckTitle,
+  activeFocusTitle,
   initialHints = [],
   initialMetrics = {
     totalHints: 0,
@@ -62,16 +111,45 @@ export function MentorPanel({
     fullReveals: 0,
     totalPenaltyPoints: 0,
   },
+  findings = [],
+  deviations = [],
+  attempts = [],
+  prefilledQuery,
 }: MentorPanelProps) {
   const [isPending, startTransition] = useTransition();
   const [spoilerLevel, setSpoilerLevel] = useState<SpoilerLevel>(0);
   const [mode, setMode] = useState<GuidanceMode>("methodology_hint");
-  const [userQuery, setUserQuery] = useState("");
+  const [userQuery, setUserQuery] = useState(prefilledQuery ?? "");
   const [latestGuidance, setLatestGuidance] = useState<MentorGuidanceResult | null>(null);
   const [hints, setHints] = useState<HintRecord[]>([...initialHints]);
   const [metrics, setMetrics] = useState<HintMetrics>(initialMetrics);
   const [error, setError] = useState<string | null>(null);
   const [checklistNotice, setChecklistNotice] = useState<string | null>(null);
+
+  const [prevPrefilledQuery, setPrevPrefilledQuery] = useState(prefilledQuery);
+  if (prefilledQuery && prefilledQuery !== prevPrefilledQuery) {
+    setPrevPrefilledQuery(prefilledQuery);
+    setUserQuery(prefilledQuery);
+  }
+
+  const confirmedServices = findings
+    .filter((f) => f.evidenceState === "confirmed" && f.contextKind === "service" && Boolean(f.contextValue))
+    .map((f) => f.contextValue!.toLowerCase());
+
+  const hasDeviations = deviations.length > 0;
+  const failedAttemptsCount = attempts.filter(
+    (a) => a.outcome === "rejected" || a.outcome === "inconclusive",
+  ).length;
+  const hasFailedAttempts = failedAttemptsCount >= 2;
+
+  const dynamicPresetQuestions = getDynamicPresetQuestions(
+    currentPhaseKey,
+    confirmedServices,
+    hasDeviations,
+    hasFailedAttempts,
+  );
+
+  const phaseMeta = phaseMetadataMap[currentPhaseKey];
 
   // Escalation Confirmation Modal state
   const [escalationTarget, setEscalationTarget] = useState<SpoilerLevel | null>(null);
@@ -390,6 +468,81 @@ export function MentorPanel({
 
         {/* Right Column: Interaction, Current Guidance & History */}
         <div className="lg:col-span-2 space-y-5">
+          {/* Proactive Methodology Strategy & Guardrails Card */}
+          <Card className="border-border bg-card/60">
+            <CardHeader className="p-4 pb-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Compass className="h-4 w-4 text-primary" />
+                  <CardTitle className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                    Phase Strategy & Guardrails
+                  </CardTitle>
+                </div>
+                <Badge variant="outline" className="text-[10px] font-mono border-primary/30 text-primary">
+                  {currentPhaseName}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 pt-1 space-y-3">
+              {phaseMeta && (
+                <div className="space-y-1 text-xs text-muted-foreground leading-relaxed">
+                  <p className="text-foreground/90 font-medium">{phaseMeta.tagLine}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    <strong className="text-foreground font-semibold">Mindset: </strong>{phaseMeta.mindset}
+                  </p>
+                </div>
+              )}
+
+              {/* Methodology Deviation Alert */}
+              {hasDeviations && (
+                <div className="border border-amber-500/30 bg-amber-950/20 rounded p-2.5 flex items-start gap-2.5 text-xs">
+                  <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-semibold text-amber-300">Phase Gate Deviation Active:</span>
+                    <span className="text-amber-200/80 ml-1">
+                      {deviations.length} gate override(s) recorded. Skipping required checks reduces your recon coverage. Revisit missing checks if you get stuck.
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Failed Attempts Alert */}
+              {hasFailedAttempts && (
+                <div className="border border-rose-500/30 bg-rose-950/20 rounded p-2.5 flex items-start gap-2.5 text-xs">
+                  <Shield className="h-4 w-4 text-rose-400 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-semibold text-rose-300">Invariant: HYPOTHESIS BEFORE ACTION:</span>
+                    <span className="text-rose-200/80 ml-1">
+                      {failedAttemptsCount} failed attempt(s) detected. Avoid trial-and-error exploit payload spam. Formulate a specific hypothesis linked to confirmed evidence before trying again.
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-border/40">
+                <span className="text-[11px] text-muted-foreground">
+                  Need a structured methodology roadmap and prioritized checks for this phase?
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={isPending}
+                  onClick={() => {
+                    setMode("next_step_guidance");
+                    const roadmapQuery = `What is the recommended methodology roadmap and priority checks for ${currentPhaseName}?`;
+                    setUserQuery(roadmapQuery);
+                    handleAskMentor(undefined, roadmapQuery);
+                  }}
+                  className="h-7 text-xs border-primary/40 hover:bg-primary/10 text-primary shrink-0"
+                >
+                  <Compass className="h-3 w-3 mr-1" />
+                  Ask for Phase Roadmap
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Ask Question / Trigger Hint Card */}
           <Card className="border-border bg-card/60">
             <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
@@ -397,14 +550,25 @@ export function MentorPanel({
                 <HelpCircle className="h-3.5 w-3.5 text-primary" />
                 <span>Consult Mentor</span>
               </CardTitle>
-              {activeCheckTitle && (
-                <span className="text-[11px] text-muted-foreground truncate max-w-[280px]">
-                  Focus: <span className="text-foreground">{activeCheckTitle}</span>
+              {(activeFocusTitle || activeCheckTitle) && (
+                <span className="text-[11px] text-muted-foreground truncate max-w-[320px]">
+                  Focus: <span className="text-foreground">{activeFocusTitle || activeCheckTitle}</span>
                 </span>
               )}
             </CardHeader>
             <CardContent className="p-4 pt-2 space-y-3">
               <form onSubmit={(e) => handleAskMentor(e)} className="space-y-3">
+                {activeFocusTitle && (
+                  <div className="flex items-center justify-between bg-primary/10 border border-primary/30 rounded px-2.5 py-1.5 text-xs text-primary">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <Lightbulb className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">Context: {activeFocusTitle}</span>
+                    </div>
+                    <Badge variant="outline" className="text-[9px] font-mono border-primary/40 text-primary shrink-0">
+                      Hypothesis Linked
+                    </Badge>
+                  </div>
+                )}
                 <div className="relative">
                   <input
                     type="text"
@@ -432,10 +596,10 @@ export function MentorPanel({
                 {/* Quick Prompts */}
                 <div className="space-y-1.5">
                   <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-wider">
-                    Quick Prompts:
+                    Contextual Prompts:
                   </span>
                   <div className="flex flex-wrap gap-1.5">
-                    {PRESET_QUESTIONS.map((q, idx) => (
+                    {dynamicPresetQuestions.map((q, idx) => (
                       <button
                         key={idx}
                         type="button"

@@ -75,11 +75,18 @@ export function prepareGuidancePromptContext(
         priority: c.priority,
       })) || [];
 
+  const failedAttemptsCount = session.attempts.filter(
+    (a) => a.outcome === "rejected" || a.outcome === "inconclusive",
+  ).length;
+  const deviationsCount = session.deviations?.length ?? 0;
+
   const visibleState: VisibleGuidanceState = {
     currentPhase: session.currentPhase?.name || "Reconnaissance",
     activeChecks,
     confirmedFindings: visibleFindings,
     recentAttemptsCount: session.attempts.length,
+    failedAttemptsCount,
+    deviationsCount,
   };
 
   // If a hidden attack graph exists, filter it through the Spoiler Policy
@@ -109,6 +116,15 @@ export function prepareGuidancePromptContext(
 ${filteredHiddenContext.allowedNodes.map((n) => `- [${n.phase.toUpperCase()}] ${n.title}: ${n.summary}`).join("\n")}`
       : `\n\nNOTE: No machine attack graph or writeup details are available for this target or level. Base guidance strictly on methodology.`;
 
+  const deviationsNote =
+    deviationsCount > 0
+      ? `\n- The learner has ${deviationsCount} recorded methodology deviation(s) from phase gate overrides. Remind them to complete required enumeration checks to prevent false conclusions.`
+      : "";
+  const failedAttemptsNote =
+    failedAttemptsCount >= 2
+      ? `\n- The learner has ${failedAttemptsCount} recent unsuccessful attempt(s). Guide them toward forming disciplined, evidence-backed hypotheses instead of firing random exploits.`
+      : "";
+
   const systemInstruction = `You are the CTF Methodology Trainer Mentor.
 Your role is to guide cybersecurity learners through structured penetration-testing methodology without spoiling solutions prematurely.
 
@@ -120,7 +136,7 @@ GUIDANCE SCOPE:
 ${filteredHiddenContext.guidanceScope}${allowedKnowledgeSection}
 
 RULES:
-1. Method before exploit: Prioritize enumeration and methodical reasoning over blind exploitation.
+1. Method before exploit: Prioritize enumeration and methodical reasoning over blind exploitation.${deviationsNote}${failedAttemptsNote}
 2. Under no circumstance provide details exceeding Spoiler Level ${spoilerLevel} or outside the allowed machine knowledge above.
 3. If the user asks for direct answers:
    - At Levels 0-3: Provide only methodology, concepts, techniques, or tools. Do not reveal machine secrets.
