@@ -1,18 +1,20 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Lightbulb, Lock, Plus } from "lucide-react";
+import { Lightbulb, Lock, Pencil, Plus, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AttemptRecord, FindingRecord, HypothesisRecord } from "@/modules/training/types";
-import { attemptOutcomeEnum } from "@/lib/db/schema";
+import { attemptOutcomeEnum, hypothesisOutcomeEnum } from "@/lib/db/schema";
 import {
   createAttemptAction,
   createHypothesisAction,
+  updateHypothesisAction,
 } from "@/app/training/[sessionId]/actions";
 
 type AttemptOutcome = (typeof attemptOutcomeEnum.enumValues)[number];
+type HypothesisOutcome = (typeof hypothesisOutcomeEnum.enumValues)[number];
 
 interface HypothesesPanelProps {
   readonly sessionId: string;
@@ -32,6 +34,7 @@ export function HypothesesPanel({
   const [isPending, startTransition] = useTransition();
   const [showAddHypothesis, setShowAddHypothesis] = useState(false);
   const [activeAttemptHypothesisId, setActiveAttemptHypothesisId] = useState<string | null>(null);
+  const [editingHypothesis, setEditingHypothesis] = useState<HypothesisRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Hypothesis form
@@ -40,6 +43,50 @@ export function HypothesesPanel({
   const [reasoning, setReasoning] = useState("");
   const [expectedResult, setExpectedResult] = useState("");
   const [testApproach, setTestApproach] = useState("");
+
+  // Edit Hypothesis form
+  const [editBasedOnFindingId, setEditBasedOnFindingId] = useState<string>("");
+  const [editHypothesisText, setEditHypothesisText] = useState("");
+  const [editReasoning, setEditReasoning] = useState("");
+  const [editExpectedResult, setEditExpectedResult] = useState("");
+  const [editTestApproach, setEditTestApproach] = useState("");
+  const [editOutcome, setEditOutcome] = useState<HypothesisOutcome>("open");
+
+  const handleStartEditHypothesis = (h: HypothesisRecord) => {
+    setError(null);
+    setShowAddHypothesis(false);
+    setActiveAttemptHypothesisId(null);
+    setEditingHypothesis(h);
+    setEditHypothesisText(h.hypothesis);
+    setEditReasoning(h.reasoning);
+    setEditExpectedResult(h.expectedResult);
+    setEditTestApproach(h.testApproach);
+    setEditOutcome(h.outcome);
+    setEditBasedOnFindingId(h.basedOnFindingId ?? "");
+  };
+
+  const handleEditHypothesisSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingHypothesis) return;
+    setError(null);
+
+    startTransition(async () => {
+      const res = await updateHypothesisAction(sessionId, editingHypothesis.id, {
+        basedOnFindingId: editBasedOnFindingId || null,
+        hypothesis: editHypothesisText.trim(),
+        reasoning: editReasoning.trim(),
+        expectedResult: editExpectedResult.trim(),
+        testApproach: editTestApproach.trim(),
+        outcome: editOutcome,
+      });
+
+      if (!res.ok) {
+        setError(res.error);
+      } else {
+        setEditingHypothesis(null);
+      }
+    });
+  };
 
   // Attempt form
   const [attemptAction, setAttemptAction] = useState("");
@@ -258,6 +305,146 @@ export function HypothesesPanel({
             const linkedFinding = findings.find((f) => f.id === hypothesis.basedOnFindingId);
             const linkedAttempts = attempts.filter((a) => a.hypothesisId === hypothesis.id);
             const isRecordingAttempt = activeAttemptHypothesisId === hypothesis.id;
+            const isEditing = editingHypothesis?.id === hypothesis.id;
+
+            if (isEditing) {
+              return (
+                <Card key={hypothesis.id} className="border-primary/40 bg-card">
+                  <CardHeader className="py-3.5 px-4 sm:px-5 border-b border-border/60">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-xs font-semibold uppercase tracking-wider text-primary">
+                        Edit Hypothesis
+                      </CardTitle>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditingHypothesis(null)}
+                        className="h-6 w-6 p-0"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-4 sm:p-5">
+                    <form onSubmit={handleEditHypothesisSubmit} className="space-y-4">
+                      {error && <p className="text-xs text-destructive">{error}</p>}
+
+                      {findings.length > 0 && (
+                        <div>
+                          <label htmlFor={`edit-h-finding-${hypothesis.id}`} className="block text-xs font-medium text-foreground">
+                            Based on Finding (Optional)
+                          </label>
+                          <select
+                            id={`edit-h-finding-${hypothesis.id}`}
+                            value={editBasedOnFindingId}
+                            onChange={(e) => setEditBasedOnFindingId(e.target.value)}
+                            className="mt-1 w-full rounded border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                          >
+                            <option value="">(None / General Hypothesis)</option>
+                            {findings.map((f) => (
+                              <option key={f.id} value={f.id}>
+                                [{f.category}] {f.title}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      <div>
+                        <label htmlFor={`edit-h-hyp-${hypothesis.id}`} className="block text-xs font-medium text-foreground">
+                          Hypothesis Statement *
+                        </label>
+                        <input
+                          id={`edit-h-hyp-${hypothesis.id}`}
+                          type="text"
+                          required
+                          value={editHypothesisText}
+                          onChange={(e) => setEditHypothesisText(e.target.value)}
+                          className="mt-1 w-full rounded border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <div>
+                          <label htmlFor={`edit-h-reason-${hypothesis.id}`} className="block text-xs font-medium text-foreground">
+                            Reasoning *
+                          </label>
+                          <textarea
+                            id={`edit-h-reason-${hypothesis.id}`}
+                            required
+                            rows={2}
+                            value={editReasoning}
+                            onChange={(e) => setEditReasoning(e.target.value)}
+                            className="mt-1 w-full rounded border border-border bg-background p-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                          />
+                        </div>
+
+                        <div>
+                          <label htmlFor={`edit-h-expected-${hypothesis.id}`} className="block text-xs font-medium text-foreground">
+                            Expected Result *
+                          </label>
+                          <textarea
+                            id={`edit-h-expected-${hypothesis.id}`}
+                            required
+                            rows={2}
+                            value={editExpectedResult}
+                            onChange={(e) => setEditExpectedResult(e.target.value)}
+                            className="mt-1 w-full rounded border border-border bg-background p-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                          />
+                        </div>
+
+                        <div>
+                          <label htmlFor={`edit-h-approach-${hypothesis.id}`} className="block text-xs font-medium text-foreground">
+                            Test Approach *
+                          </label>
+                          <textarea
+                            id={`edit-h-approach-${hypothesis.id}`}
+                            required
+                            rows={2}
+                            value={editTestApproach}
+                            onChange={(e) => setEditTestApproach(e.target.value)}
+                            className="mt-1 w-full rounded border border-border bg-background p-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label htmlFor={`edit-h-outcome-${hypothesis.id}`} className="block text-xs font-medium text-foreground">
+                          Hypothesis Status / Outcome
+                        </label>
+                        <select
+                          id={`edit-h-outcome-${hypothesis.id}`}
+                          value={editOutcome}
+                          onChange={(e) => setEditOutcome(e.target.value as HypothesisOutcome)}
+                          className="mt-1 w-full rounded border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                        >
+                          <option value="open">Open (Unverified)</option>
+                          <option value="confirmed">Confirmed (Verified)</option>
+                          <option value="rejected">Rejected (Disproven)</option>
+                          <option value="inconclusive">Inconclusive</option>
+                        </select>
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingHypothesis(null)}
+                          className="text-xs"
+                        >
+                          Cancel
+                        </Button>
+                        <Button type="submit" size="sm" disabled={isPending} className="text-xs">
+                          Save Changes
+                        </Button>
+                      </div>
+                    </form>
+                  </CardContent>
+                </Card>
+              );
+            }
 
             return (
               <Card key={hypothesis.id} className="border-border/80 bg-card/60">
@@ -291,18 +478,30 @@ export function HypothesesPanel({
                     </div>
 
                     {!isCompleted && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          setActiveAttemptHypothesisId(isRecordingAttempt ? null : hypothesis.id)
-                        }
-                        className="shrink-0 text-xs gap-1.5"
-                      >
-                        <Plus className="h-3 w-3" />
-                        Record Attempt
-                      </Button>
+                      <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-start">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleStartEditHypothesis(hypothesis)}
+                          className="gap-1 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          <Pencil className="h-3 w-3" />
+                          Edit
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            setActiveAttemptHypothesisId(isRecordingAttempt ? null : hypothesis.id)
+                          }
+                          className="text-xs gap-1.5"
+                        >
+                          <Plus className="h-3 w-3" />
+                          Record Attempt
+                        </Button>
+                      </div>
                     )}
                   </div>
 

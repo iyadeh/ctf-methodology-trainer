@@ -21,6 +21,7 @@ import {
   advancePhaseAction,
   completeCheckAction,
   skipCheckAction,
+  resetCheckAction,
 } from "@/app/training/[sessionId]/actions";
 
 interface ChecklistSectionProps {
@@ -133,7 +134,7 @@ export function ChecklistSection({
 
     startTransition(async () => {
       if (check.status === "completed") {
-        // Toggle not directly supported in MVP, but can skip/complete
+        await resetCheckAction(sessionId, check.id);
         return;
       }
       await completeCheckAction(sessionId, check.id);
@@ -147,12 +148,19 @@ export function ChecklistSection({
     });
   };
 
+  const handleResetCheck = (checkId: string) => {
+    if (isCompleted) return;
+    startTransition(async () => {
+      await resetCheckAction(sessionId, checkId);
+    });
+  };
+
   const handleAdvance = (override = false) => {
     if (isCompleted) return;
     setAdvanceError(null);
     startTransition(async () => {
       const reason = override ? overrideReason.trim() : undefined;
-      const res = await advancePhaseAction(sessionId, reason);
+      const res = await advancePhaseAction(sessionId, reason, override);
       if (!res.ok) {
         setAdvanceError(res.error);
         return;
@@ -231,18 +239,19 @@ export function ChecklistSection({
                       <button
                         type="button"
                         onClick={() => handleToggleCheck(check)}
-                        disabled={isPending || isCompleted || isSuperseded || isInactive || isCheckCompleted}
+                        disabled={isPending || isCompleted || isSuperseded || isInactive}
                         className={cn(
                           "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
                           isCheckCompleted
-                            ? "border-primary bg-primary text-primary-foreground"
+                            ? "border-primary bg-primary text-primary-foreground hover:bg-primary/80 cursor-pointer"
                             : isSkipped
                               ? "border-muted-foreground/60 bg-muted/60 text-muted-foreground"
                               : isCompleted
                                 ? "border-border/40 opacity-40 cursor-not-allowed"
-                                : "border-border hover:border-primary focus:outline-none focus:ring-1 focus:ring-primary",
+                                : "border-border hover:border-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer",
                         )}
-                        aria-label={`Mark ${check.title} as completed`}
+                        aria-label={isCheckCompleted ? `Unmark ${check.title}` : `Mark ${check.title} as completed`}
+                        title={isCheckCompleted ? "Click to uncheck" : undefined}
                       >
                         {isCheckCompleted && <Check className="h-3 w-3 stroke-[3]" />}
                       </button>
@@ -304,6 +313,23 @@ export function ChecklistSection({
                         >
                           <SkipForward className="mr-1 h-3 w-3" />
                           Skip
+                        </Button>
+                      </div>
+                    )}
+
+                    {!isCompleted && isSkipped && !isSuperseded && (
+                      <div className="flex shrink-0 items-center gap-1.5 self-end sm:self-start">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleResetCheck(check.id)}
+                          disabled={isPending || isCompleted}
+                          className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                          title="Undo skip (reactivate check)"
+                        >
+                          <RotateCcw className="mr-1 h-3 w-3" />
+                          Undo Skip
                         </Button>
                       </div>
                     )}
@@ -374,6 +400,12 @@ export function ChecklistSection({
                 ))}
               </ul>
             </div>
+
+            {advanceError && (
+              <p className="mt-3 rounded border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
+                {advanceError}
+              </p>
+            )}
 
             {showOverrideInput ? (
               <div className="mt-4 space-y-2">

@@ -29,7 +29,10 @@ describe("context normalization", () => {
     ["technology", "wp", ["technology:wordpress"]],
     ["technology", "drupal", ["technology:drupal"]],
     ["access", "local shell", ["access:local-shell"]],
-    ["access", "remote-shell", ["access:remote-shell"]],
+    ["access", "shell", ["access:local-shell"]],
+    ["access", "bash", ["access:local-shell"]],
+    ["access", "remote-shell", ["access:local-shell", "access:remote-shell"]],
+    ["access", "reverse shell", ["access:local-shell", "access:remote-shell"]],
   ] as [ContextKind, string, string[]][])("normalizes %s / %s", (kind, value, expected) => {
     expect(normalizeContext(kind, value)).toEqual(expected);
   });

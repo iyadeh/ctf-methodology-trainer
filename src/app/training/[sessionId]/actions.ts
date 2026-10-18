@@ -12,6 +12,7 @@ import {
   resumeTrainingSession,
   setTrainingSessionTargetIp,
   skipSessionCheck,
+  resetSessionCheck,
   startTrainingSession,
   type CompleteSessionInput,
 } from "@/modules/training/service";
@@ -20,9 +21,13 @@ import {
   createAttempt,
   createFinding,
   createHypothesis,
+  updateFinding,
+  updateHypothesis,
   type CreateAttemptInput,
   type CreateFindingInput,
   type CreateHypothesisInput,
+  type UpdateFindingInput,
+  type UpdateHypothesisInput,
 } from "@/modules/training/evidence";
 import {
   createNote,
@@ -108,14 +113,31 @@ export async function skipCheckAction(sessionId: string, checkId: string) {
   }
 }
 
+export async function resetCheckAction(sessionId: string, checkId: string) {
+  try {
+    await resetSessionCheck(sessionId, checkId);
+    revalidatePath(`/training/${sessionId}`);
+    return { ok: true as const };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error: error instanceof Error ? error.message : "Failed to reset check",
+    };
+  }
+}
+
 export async function advancePhaseAction(
   sessionId: string,
   overrideReason?: string,
+  override?: boolean,
 ) {
   try {
+    const isOverride = Boolean(
+      override || (overrideReason && overrideReason.trim().length > 0),
+    );
     const result = await advanceTrainingSessionPhase(
       sessionId,
-      overrideReason ? { reason: overrideReason } : undefined,
+      isOverride ? { override: true, reason: overrideReason } : undefined,
     );
     revalidatePath(`/training/${sessionId}`);
     return { ok: true as const, result };
@@ -139,6 +161,23 @@ export async function createFindingAction(
     return {
       ok: false as const,
       error: error instanceof Error ? error.message : "Failed to create finding",
+    };
+  }
+}
+
+export async function updateFindingAction(
+  sessionId: string,
+  findingId: string,
+  input: UpdateFindingInput,
+) {
+  try {
+    await updateFinding(sessionId, findingId, input);
+    revalidatePath(`/training/${sessionId}`);
+    return { ok: true as const };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error: error instanceof Error ? error.message : "Failed to update finding",
     };
   }
 }
@@ -171,6 +210,23 @@ export async function createHypothesisAction(
     return {
       ok: false as const,
       error: error instanceof Error ? error.message : "Failed to create hypothesis",
+    };
+  }
+}
+
+export async function updateHypothesisAction(
+  sessionId: string,
+  hypothesisId: string,
+  input: UpdateHypothesisInput,
+) {
+  try {
+    await updateHypothesis(sessionId, hypothesisId, input);
+    revalidatePath(`/training/${sessionId}`);
+    return { ok: true as const };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error: error instanceof Error ? error.message : "Failed to update hypothesis",
     };
   }
 }

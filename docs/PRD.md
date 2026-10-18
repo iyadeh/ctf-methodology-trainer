@@ -1,2757 +1,515 @@
-# Product Requirements Document
-# CTF Methodology Trainer
+# CTF Methodology Trainer — Product Requirements Document (PRD)
 
-**Version:** 0.3  
-**Status:** MVP Definition / Product Source of Truth  
-**Product Type:** Local-first cybersecurity training companion  
-**Primary User:** Individual cybersecurity learner / penetration tester  
-**Primary Methodology:** PTES adapted for CTF  
-**Primary AI Provider:** Gemini Developer API  
-**Primary Platform:** Desktop-oriented local web application  
+> **Dokumen Kontrol Produk**  
+> **Nama Produk:** CTF Methodology Trainer  
+> **Versi Dokumen:** 1.0 (Human-Centered Baseline)  
+> **Status:** Disetujui & Terverifikasi Penuh (*Approved / Production Baseline*)  
+> **Target Rilis:** MVP (*Minimum Viable Product* — Tahap 01 s/d Tahap 30)  
+> **Platform & Teknologi:** Desktop-Oriented Local-First Web Application (Next.js 16 App Router, PostgreSQL, Drizzle ORM, Tailwind CSS v4, Google Gemini API)  
+> **Kategori Produk:** *Cybersecurity Education & Evidence-Driven Methodology Training Companion*
 
 ---
 
-# 1. Product Summary
+## Ringkasan Eksekutif (*Executive Summary*)
 
-CTF Methodology Trainer adalah aplikasi pembelajaran cybersecurity yang membantu user menyelesaikan vulnerable machine atau CTF menggunakan workflow penetration testing yang sistematis.
+**CTF Methodology Trainer** adalah aplikasi pendamping pembelajaran penetrasi keamanan siber (*penetration testing*) lokal (*local-first companion*) yang dirancang untuk mengatasi masalah paling mendasar pada komunitas praktisi keamanan siber dan pemain *Capture The Flag* (CTF): **kebiasaan menyerang secara acak (*random guessing/fuzzing*), ketergantungan berlebihan pada *walkthrough/writeup* yang merusak proses belajar, pengabaian metodologi formal, dan jebakan jalan buntu (*rabbit holes*) yang tidak terarah.**
 
-Aplikasi tidak bertujuan memberikan walkthrough secara langsung.
+Platform CTF konvensional (seperti Hack The Box, TryHackMe, VulnHub, atau Proving Grounds) menyediakan mesin rentan (*vulnerable machine*), namun menyerahkan proses eksplorasi sepenuhnya kepada pengguna tanpa bimbingan terstruktur. Akibatnya, pemula sering kali terjebak dalam siklus frustrasi: menjalankan pemindaian port, bingung menentukan prioritas, langsung membuka *writeup*, menyalin perintah eksploitasi mentah-mentah (*copy-paste exploit*), dan mendapatkan *root* tanpa memahami proses pengambilan keputusan di baliknya.
 
-User hanya mengunggah writeup sebuah machine.
+CTF Methodology Trainer mengubah paradigma ini secara radikal: **Aplikasi tidak pernah menyerang target secara otomatis, dan tidak pernah memberikan contekan langkah eksploitasi.** Sebagai gantinya, aplikasi mengonversi dokumen *writeup* resmi menjadi **Pengetahuan Tersembunyi (*Hidden Machine Knowledge & Attack Graph*)** yang disimpan rapat di sisi server. Pengetahuan ini menjadi kompas bagi *deterministic methodology engine* berbasis standar PTES (*Penetration Testing Execution Standard*) untuk:
 
-Writeup kemudian dianalisis oleh AI secara tersembunyi untuk menghasilkan machine-specific hidden knowledge seperti:
+1. Menjaga disiplin pengujian pengguna (*Methodology Before Exploit*).
+2. Membuka panduan dan *checklist* hanya berdasarkan bukti nyata yang ditemukan dan dikonfirmasi oleh pengguna (*Evidence Before Action*).
+3. Melatih perumusan hipotesis ilmiah sebelum melakukan pengujian eksploitasi (*Hypothesis Before Random Testing*).
+4. Memberikan asistensi mentor AI progresif tingkat 0–6 tanpa membocorkan jawaban (*Guidance Without Spoilers*).
+5. Membuka komparasi jalur resmi (*Reference Path*) dan metrik disiplin hanya setelah mesin berhasil diselesaikan (*Post-Session Reflection*).
 
-- services;
-- attack surface;
-- vulnerabilities;
-- credentials;
-- dependencies;
-- initial access;
-- privilege escalation;
-- attack path.
-
-Hidden knowledge tersebut digunakan sebagai **answer key internal**, bukan sebagai roadmap yang langsung ditampilkan kepada user.
-
-User tetap melakukan penetration testing sendiri menggunakan environment seperti Kali Linux.
-
-Aplikasi bertugas menjaga agar user bekerja berdasarkan methodology, mencatat evidence, membangun hypothesis, menguji hypothesis, dan mendapatkan guidance secara progresif jika mengalami kebuntuan.
-
-Core flow:
-
-```text
-Writeup
-→ AI Analysis
-→ Hidden Machine Knowledge
-→ PTES Methodology
-→ Training Session
-→ Evidence
-→ Findings
-→ Hypotheses
-→ Attempts
-→ Exploitation
-→ Post Exploitation
-→ Reporting
-→ Session Review
+```
++----------------------------------------------------------------------------------------------------+
+|                         NILAI UTAMA PRODUK CTF METHODOLOGY TRAINER                                 |
++----------------------------------------------------------------------------------------------------+
+|                                                                                                    |
+|    [ DOKUMEN WRITEUP SUMBER ]                    [ DISIPLIN PENETRATION TESTER ]                   |
+|    - Dokumen PDF, Markdown, TXT                  - Menguji target manual di Kali Linux             |
+|    - Ekstraksi fakta rahasia oleh AI             - Mengumpulkan bukti (port, banner, service)      |
+|    - Graf serangan tersembunyi (Server-only)     - Merumuskan hipotesis & mencatat attempt         |
+|    - Kunci jawaban terisolasi                    - Menuntaskan Phase Gate secara sadar             |
+|                                                                                                    |
+|                                 \                     /                                            |
+|                                  \                   /                                             |
+|                                   v                 v                                              |
+|                         +-----------------------------------+                                      |
+|                         |  DETERMINISTIC METHODOLOGY ENGINE |                                      |
+|                         |  - Metodologi PTES 6-Fase         |                                      |
+|                         |  - Checklist dinamis berbasis hak |                                      |
+|                         |  - AI Mentor progresif (Level 0-6)|                                      |
+|                         |  - Evaluasi metrik & Review rute  |                                      |
+|                         +-----------------------------------+                                      |
+|                                                                                                    |
++----------------------------------------------------------------------------------------------------+
 ```
 
 ---
 
-# 2. Product Vision
+## Daftar Isi
 
-Tujuan utama aplikasi bukan:
+1. [Latar Belakang & Analisis Masalah](#1-latar-belakang--analisis-masalah)
+2. [Visi Produk, Nilai Inti & Sasaran Sukses](#2-visi-produk-nilai-inti--sasaran-sukses)
+3. [Batasan Cakupan Produk (Scope Boundaries & Non-Goals)](#3-batasan-cakupan-produk-scope-boundaries--non-goals)
+4. [Persona Pengguna & Cerita Pengguna (User Stories)](#4-persona-pengguna--cerita-pengguna-user-stories)
+5. [Alur Pengguna & Pengalaman Antarmuka (User Journey & UX)](#5-alur-pengguna--pengalaman-antarmuka-user-journey--ux)
+6. [Kebutuhan Fungsional Produk (Functional Requirements)](#6-kebutuhan-fungsional-produk-functional-requirements)
+7. [Model Data Konseptual (Data Dictionary)](#7-model-data-konseptual-data-dictionary)
+8. [Filosofi Keamanan & Privasi Produk](#8-filosofi-keamanan--privasi-produk)
+9. [Kebutuhan Non-Fungsional (Kualitas Sistem)](#9-kebutuhan-non-fungsional-kualitas-sistem)
+10. [Panduan Desain Antarmuka & Sistem Visual](#10-panduan-desain-antarmuka--sistem-visual)
+11. [Kriteria Penerimaan & Skenario Sukses (Acceptance Criteria)](#11-kriteria-penerimaan--skenario-sukses-acceptance-criteria)
+12. [Rencana Rilis & Milestone Roadmap (Tahap 01 – 30)](#12-rencana-rilis--milestone-roadmap-tahap-01--30)
+13. [Manajemen Risiko & Pertimbangan Desain](#13-manajemen-risiko--pertimbangan-desain)
 
-> membantu user mendapatkan root secepat mungkin.
+---
 
-Tujuan utama aplikasi adalah:
+## 1. Latar Belakang & Analisis Masalah
 
-> membentuk kebiasaan penetration testing yang sistematis, evidence-driven, hypothesis-driven, tidak terburu-buru, dan dapat digunakan kembali pada machine lain.
+### 1.1 Masalah Fundamental dalam Pembelajaran CTF
+Dalam melatih keterampilan uji penetrasi keamanan siber (*ethical hacking*), praktisi pemula maupun menengah sering menghadapi rintangan psikologis dan metodologis:
 
-Mental model yang ingin dibentuk:
+1. **Sindrom "Nmap Langsung Exploit" (*The Tool-Jumping Trap*):**  
+   Banyak pembelajar menjalankan `nmap`, melihat satu port HTTP terbuka, langsung membuka SearchSploit atau Metasploit, lalu menembakkan eksploitasi secara membabi buta tanpa mengidentifikasi versi, banner, teknologi web, atau konfigurasi khusus. Jika gagal, mereka bingung dan tidak memiliki rencana cadangan.
+2. **Ketergantungan Merusak pada Walkthrough (*Spoiler Addiction*):**  
+   Saat menemui jalan buntu selama 30 menit, mayoritas pembelajar membuka *writeup* lengkap di blog atau YouTube. Mengetahui jawaban secara instan melenyapkan momen kritis pembentukan intuisi investigasi (*investigative thinking*). Begitu jawaban dibaca, kesempatan belajar mandiri pada mesin tersebut hilang selamanya.
+3. **Frustrasi Jalan Buntu Tanpa Kompas (*The Rabbit Hole Despair*):**  
+   Pada mesin yang rumit, pembelajar sering menghabiskan waktu 4 jam mengutak-atik direktori yang tidak penting atau layanan umpan (*rabbit hole*). Tanpa bimbingan terkalibrasi, mereka tidak tahu apakah mereka sedang berada di jalur yang benar atau sedang membuang waktu.
+4. **Ketiadaan Refleksi Pasca-Latihan (*No Systematic Debriefing*):**  
+   Setelah mendapatkan *root flag*, mayoritas pembelajar langsung menutup mesin tanpa pernah meninjau kembali: *"Berapa banyak langkah tidak perlu yang saya lakukan?", "Apakah saya melewatkan tahap enumerasi penting?", "Bagaimana alur resmi yang sebenarnya dirancang oleh pembuat mesin?"*
+
+### 1.2 Solusi CTF Methodology Trainer
+CTF Methodology Trainer menghadirkan ekosistem latihan yang bertindak layaknya **Mentor Penetrasi Senior di Samping Anda**:
+* **Metodologi sebagai Pengendali (*Methodology First*):** Alur latihan dipandu oleh 6 fase standar PTES: *Reconnaissance*, *Scanning & Enumeration*, *Threat Modeling*, *Vulnerability Analysis*, *Exploitation*, dan *Post Exploitation*.
+* **Aktivasi Terkondisi Bukti (*Evidence-Driven UI*):** Checklist layanan (misalnya HTTP Playbook) tidak akan pernah muncul hanya karena *writeup* mengatakan ada web server; checklist baru aktif setelah pengguna sendiri memasukkan bukti temuan port 80/443.
+* **Mentor Tanpa Spoiler (*Progressive Guidance*):** Jika buntu, pengguna meminta petunjuk berjenjang (Level 0 s/d 6). AI Mentor mengarahkan pola pikir (*"Perhatikan respons header cookie"*), bukan memberikan jawaban mentah (*"Gunakan exploit CVE-2023-XXXX"*).
+* **Evaluasi & Refleksi Deterministik:** Setelah mesin selesai, sistem menampilkan grafik perbandingan antara *User Path* (rute eksplorasi pengguna) dengan *Reference Path* (jalur resmi *writeup*) disertai skor kepatuhan fase dan cakupan enumerasi.
+
+---
+
+## 2. Visi Produk, Nilai Inti & Sasaran Sukses
+
+### 2.1 Visi Produk
+> *"Menjadi platform pendamping pelatihan penetrasi keamanan siber nomor satu yang membangun kebiasaan metodologis, disiplin investigasi berbasis bukti, dan ketajaman analisis tanpa merusak kenikmatan memecahkan teka-teki keamanan siber."*
+
+### 2.2 Sembilan Aturan Inti Produk (*Core Invariants*)
 
 ```text
-Observe
-→ Enumerate
-→ Record Evidence
-→ Analyze
-→ Form Hypothesis
-→ Validate
-→ Exploit
-→ Enumerate Again
-→ Escalate
-→ Document
-→ Review
+1. METHOD BEFORE EXPLOIT          — Metodologi selalu mendahului aksi eksploitasi.
+2. EVIDENCE BEFORE ACTION         — Setiap tindakan harus didasari bukti yang valid.
+3. ENUMERATION BEFORE ASSUMPTION  — Dilarang berasumsi sebelum enumerasi tuntas.
+4. HYPOTHESIS BEFORE RANDOM TEST  — Uji coba harus berbasis hipotesis terencana.
+5. GUIDANCE WITHOUT SPOILERS      — Bimbingan tidak boleh membocorkan jawaban langsung.
+6. VISIBLE CONTEXT FROM EVIDENCE  — Konteks terlihat murni berasal dari temuan pengguna.
+7. AI ASSISTS, METHOD DECIDES     — AI hanya membantu analisis, mesin metodologi yang memutuskan.
+8. FRONTEND RENDERS DATA          — Antarmuka bersifat skema generik, bukan logika mesin.
 ```
 
-Bukan:
+### 2.3 Sasaran Kualitatif & Kuantitatif Produk (G-01 – G-05)
 
-```text
-Nmap
-→ Gobuster
-→ Exploit
-→ LinPEAS
-→ Root
+| ID | Sasaran Produk | Indikator Keberhasilan (Target KPI) | Cara Evaluasi |
+|---|---|---|---|
+| **G-01** | **Isolasi Rahasia Mutlak** | 0% kebocoran rahasia (*zero spoiler leakage*) ke browser klien sebelum sesi selesai. | Security boundary audit & automated network inspection. |
+| **G-02** | **Disiplin Metodologi PTES** | 100% transisi fase diatur oleh *Phase Gate Deterministic Engine*. | Pengujian unit dan integrasi aturan Phase Gate. |
+| **G-03** | **Kemandirian Berpikir Pengguna** | > 70% pengguna berhasil mencapai *initial access* dengan petunjuk <= Level 3 (petunjuk konseptual/arah). | Analisis riwayat penggunaan petunjuk (*hint records*). |
+| **G-04** | **Ketahanan Lingkungan Lokal** | 100% fitur utama metodologi, catatan, hipotesis, dan checklist tetap aktif saat offline / AI gagal. | Pengujian simulasi pemutusan API Gemini (*graceful degradation*). |
+| **G-05** | **Kecepatan Respons Lokal** | Responsivitas interaksi lokal (checklist, finding, gate) < 100 ms. | Pengukuran latensi runtime pada desktop browser. |
+
+---
+
+## 3. Batasan Cakupan Produk (Scope Boundaries & Non-Goals)
+
+```
++----------------------------------------------------------------------------------------------------+
+|                                    MATRIKS RUANG LINGKUP MVP                                       |
++----------------------------------------------------+-----------------------------------------------+
+|               DI DALAM CAKUPAN (IN-SCOPE)          |           DI LUAR CAKUPAN (NON-GOALS)         |
++----------------------------------------------------+-----------------------------------------------+
+| - Ingest dokumen writeup (PDF, Markdown, TXT)      | - Eksekusi eksploit otomatis ke target VM     |
+| - Ekstraksi fakta rahasia via Gemini API           | - Scanner kerentanan otomatis (Nmap/Nessus)   |
+| - Pembentukan graf serangan tersembunyi (Server)   | - Penyediaan virtual machine / target hosting |
+| - Verifikasi otomatis graf (Solvability check)     | - Fitur multiplayer / leaderboard kompetisi   |
+| - Mesin PTES 6-Fase dengan Phase Gate deterministik| - Integrasi reverse shell / terminal di web   |
+| - Checklist dinamis berbasis Playbook Registry     | - Penilaian berbasis skor angka subjektif AI  |
+| - Pencatatan Bukti, Temuan, Hipotesis, dan Attempt | - Penyimpanan cloud publik multi-tenant       |
+| - AI Mentor progresif (Level 0 s/d 6)              | - Dukungan perangkat mobile layar sempit      |
+| - Session Review & Pembukaan Graf Solusi           | - Otomasi pelaporan komersial PDF korporat    |
++----------------------------------------------------+-----------------------------------------------+
 ```
 
-Machine boleh berubah.
-
-Framework kerja user harus tetap konsisten.
-
----
-
-# 3. Product Principles
-
-## 3.1 Method Before Exploit
-
-User harus memahami attack surface sebelum melakukan exploitation.
-
-## 3.2 Evidence Before Action
-
-Tindakan harus didasarkan pada evidence yang ditemukan.
-
-## 3.3 Hypothesis Before Random Testing
-
-User didorong menjelaskan:
-
-- apa yang ditemukan;
-- apa yang diduga;
-- mengapa dugaan tersebut masuk akal;
-- bagaimana dugaan akan diuji;
-- hasil apa yang diharapkan.
-
-## 3.4 Enumeration Before Assumption
-
-User tidak boleh diarahkan langsung ke exploit hanya karena hidden solution sudah diketahui aplikasi.
-
-## 3.5 Framework Over Machine
-
-Machine-specific attack path dapat berubah.
-
-Methodology tetap menjadi framework utama.
-
-## 3.6 Guidance Without Spoilers
-
-Aplikasi memberikan bantuan sekecil mungkin yang masih memungkinkan user melanjutkan proses belajar.
-
-## 3.7 AI Assists, Methodology Decides
-
-AI membantu:
-
-- memahami writeup;
-- menginterpretasikan context;
-- memberi hint;
-- menjelaskan konsep;
-- memberikan contextual suggestion.
-
-AI tidak menjadi source of truth application state.
-
-## 3.8 Dynamic Knowledge, Stable Interface
-
-Machine dan checklist dapat berubah.
-
-Layout dan vocabulary frontend tetap stabil.
+### 3.1 Alasan Pemilihan Non-Goals (*Product Rationale*)
+* **Mengapa tidak ada penyerangan otomatis (*No Auto-Attack*)?**  
+  Tujuan aplikasi adalah melatih otak dan keterampilan manusia. Jika aplikasi meluncurkan payload otomatis, pengguna menjadi penonton pasif dan kehilangan esensi pembelajaran praktis.
+* **Mengapa Target VM tidak dikelola aplikasi?**  
+  Pengguna menjalankan Kali Linux dan VM target (misal via VirtualBox/VMware atau VPN HackTheBox) secara independen. Ini memastikan keamanan lingkungan lokal dan memberikan kebebasan penuh bagi pengguna untuk menggunakan peralatan (*tools*) pilihannya sendiri.
+* **Mengapa skor evaluasi tidak ditentukan oleh AI?**  
+  AI rentan mengalami halusinasi dan inkonsistensi penilaian (*non-deterministic grading*). Seluruh skor (*Phase Gate Compliance*, *Recon Coverage*, *Hypothesis Discipline*) dihitung dengan rumus matematika deterministik berbasis aksi nyata pengguna. AI hanya bertugas memberikan ulasan naratif kualitatif.
 
 ---
 
-# 4. Problem Statement
+## 4. Persona Pengguna & Cerita Pengguna (User Stories)
 
-Saat mengerjakan vulnerable machine atau CTF, learner sering:
+### 4.1 Persona Pengguna
 
-- terburu-buru menuju exploitation;
-- menggunakan tools tanpa memahami objective;
-- melewatkan enumeration penting;
-- melakukan random testing;
-- tidak mencatat evidence;
-- tidak membangun attack hypothesis;
-- mencoba exploit sebelum memahami attack surface;
-- bergantung pada walkthrough;
-- menghafal command tanpa memahami methodology;
-- sulit mentransfer pengalaman dari satu machine ke machine lain.
-
-Guided Mode pada beberapa training platform dapat membantu, tetapi:
-
-- tidak tersedia untuk semua machine;
-- dapat membutuhkan subscription;
-- hanya tersedia pada platform tertentu;
-- machine retired dapat tidak dapat diakses;
-- guidance biasanya dibuat manual untuk setiap machine.
-
-CTF Methodology Trainer mengatasi masalah tersebut dengan menggunakan writeup sebagai hidden answer key dan methodology sebagai workflow utama.
-
----
-
-# 5. Target User
-
-MVP merupakan single-user application.
-
-Primary persona:
-
-- cybersecurity learner;
-- aspiring penetration tester;
-- software developer yang belajar security;
-- security engineer;
-- CTF learner.
-
-User biasanya:
-
-- menggunakan Kali Linux;
-- menjalankan vulnerable VM melalui VirtualBox atau VMware;
-- menggunakan HackMyVM, VulnHub, atau lab serupa;
-- memiliki writeup machine;
-- ingin belajar methodology tanpa membaca solution secara langsung.
-
----
-
-# 6. Product Scope
-
-MVP menangani:
-
-- writeup ingestion;
-- hidden machine knowledge generation;
-- PTES-based training workflow;
-- dynamic checklist;
-- findings;
-- hypotheses;
-- attempts;
-- notes;
-- progressive hints;
-- AI Mentor;
-- phase gates;
-- session progress;
-- session review.
-
----
-
-# 7. Non-Goals
-
-MVP bukan:
-
-- CTF hosting platform;
-- vulnerable VM provider;
-- virtualization manager;
-- automatic exploitation framework;
-- collaborative pentesting environment;
-- public SaaS;
-- social platform.
-
-MVP tidak akan:
-
-- mengupload VM;
-- menjalankan VM;
-- mengontrol VMware;
-- mengontrol VirtualBox;
-- mendownload machine otomatis;
-- menjalankan attack command ke target;
-- melakukan exploitation otomatis;
-- menyediakan multi-user authentication;
-- menyediakan leaderboard;
-- menyediakan mobile application.
-
----
-
-# 8. High-Level User Journey
-
-Untuk satu machine:
-
-1. User memilih New Training.
-2. User mengunggah writeup.
-3. Sistem mengekstrak document text.
-4. Gemini mengekstrak machine facts.
-5. Sistem membangun Hidden Attack Graph.
-6. Automated Verifier mengecek graph.
-7. Hidden knowledge disimpan.
-8. Training Session dibuat.
-9. User memasukkan target IP.
-10. Reconnaissance dimulai.
-11. User menemukan evidence.
-12. Evidence menghasilkan context.
-13. Context mengaktifkan relevant playbooks.
-14. Dynamic checklist berkembang.
-15. User mencatat findings.
-16. User membuat hypotheses.
-17. User melakukan attempts.
-18. User berpindah phase melalui Phase Gate.
-19. User dapat meminta progressive hints.
-20. AI Mentor memberikan contextual assistance.
-21. User memperoleh initial access.
-22. Post Exploitation checklist aktif.
-23. User memperoleh objective/root.
-24. User menandai session selesai.
-25. Hidden Reference Path dibuka.
-26. User Path dibandingkan Reference Path.
-27. Methodology Review ditampilkan.
-28. Session disimpan ke Learning History.
-
----
-
-# 9. New Training
-
-User membuka:
-
-Dashboard
-→ New Training
-
-UI minimal:
-
-New Training
-
-Upload Writeup
-
-[ Drop PDF / TXT / MD here ]
-
-Framework:
-PTES — CTF Adapted
-
-[ Generate Training ]
-
-User tidak perlu memasukkan:
-
-- machine file;
-- OVA;
-- VMDK;
-- VDI;
-- HackMyVM URL;
-- VMware configuration;
-- VirtualBox configuration.
-
----
-
-# 10. Supported Writeup Formats
-
-MVP mendukung:
-
-- PDF;
-- TXT;
-- Markdown.
-
-Future support dapat mencakup:
-
-- DOCX;
-- HTML;
-- web URL import.
-
----
-
-# 11. Writeup Processing Pipeline
-
-Pipeline:
-
-```text
-Writeup Upload
-→ File Validation
-→ Document Parser
-→ Text Extraction
-→ Text Normalization
-→ Fact Extraction
-→ Attack Graph Generation
-→ Automated Verification
-→ Hidden Knowledge Storage
-→ Training Session Creation
+```
++----------------------------------------------------+-----------------------------------------------+
+| PERSONA 1: PEMBELAJAR KEAMANAN SIBER (ARGA)        | PERSONA 2: INSTRUKTUR / LEAD PENTESTER (DIAN) |
++----------------------------------------------------+-----------------------------------------------+
+| Profil:                                            | Profil:                                       |
+| - Mahasiswa / Junior Security Analyst (22 th)      | - Senior Pentester & Pelatih Lab Internal     |
+| - Sering bermain CTF tapi mudah buntu dan frustrasi| - Ingin melatih tim junior agar tidak ceroboh |
+| Kebutuhan:                                         | Kebutuhan:                                    |
+| - Panduan terstruktur saat mencoba mesin baru      | - Standardisasi alur kerja penetrasi tim      |
+| - Bantuan saat mentok tanpa merusak keseruan solve | - Evaluasi kebiasaan berpikir anak didik      |
+| Titik Frustrasi:                                   | Titik Frustrasi:                              |
+| - Sering langsung buka writeup & merasa bersalah   | - Anggota tim mengabaikan pencatatan bukti    |
+| - Menghabiskan waktu 5 jam di rabbit hole palsu    | - Laporan penetrasi berantakan tanpa metodologi|
++----------------------------------------------------+-----------------------------------------------+
 ```
 
-User hanya melihat processing status.
+### 4.2 Matriks Cerita Pengguna (*User Stories*)
 
-Contoh:
-
-Preparing Training
-
-✓ Document parsed  
-✓ Machine knowledge extracted  
-✓ Attack path modeled  
-✓ Guide verified  
-✓ Training ready  
-
-[ Start Training ]
-
-Solution detail tidak ditampilkan.
-
----
-
-# 12. AI Fact Extraction
-
-Gemini mengekstrak structured machine facts.
-
-Possible facts:
-
-## Machine Metadata
-
-- machine name;
-- platform;
-- operating system;
-- difficulty;
-- author.
-
-## Network
-
-- ports;
-- protocols;
-- services;
-- service versions.
-
-## Application
-
-- web technologies;
-- frameworks;
-- CMS;
-- authentication surfaces;
-- APIs.
-
-## Findings
-
-- files;
-- directories;
-- endpoints;
-- users;
-- credentials;
-- hashes;
-- configuration files;
-- sensitive resources.
-
-## Vulnerabilities
-
-- misconfigurations;
-- known vulnerabilities;
-- CVEs;
-- access-control weaknesses;
-- credential exposure;
-- insecure permissions.
-
-## Attack Path
-
-- discovery dependencies;
-- initial access;
-- lateral movement if relevant;
-- privilege escalation;
-- final objective.
-
-Output harus structured JSON.
+| ID | Sebagai... | Saya Ingin... | Agar... | Prioritas |
+|---|---|---|---|:---:|
+| **US-01** | Pengguna | Mengunggah file writeup mesin (PDF/MD/TXT) | Sistem dapat mengekstrak pengetahuan mesin secara tersembunyi. | **P0 (Must)** |
+| **US-02** | Pengguna | Memulai sesi latihan baru berbasis writeup | Saya memiliki ruang kerja investigasi yang bersih dan terisolasi. | **P0 (Must)** |
+| **US-03** | Pengguna | Melihat checklist metodologi PTES sesuai fase aktif | Saya tahu langkah investigasi standar yang harus dilakukan. | **P0 (Must)** |
+| **US-04** | Pengguna | Mencatat temuan bukti (*findings*) seperti port dan banner | Temuan saya terdokumentasi dan mengaktifkan checklist terkait. | **P0 (Must)** |
+| **US-05** | Pengguna | Mengonfirmasi temuan (*confirm finding*) | Playbook layanan spesifik (misal HTTP) otomatis aktif di checklist. | **P0 (Must)** |
+| **US-06** | Pengguna | Merumuskan hipotesis sebelum melakukan eksploitasi | Saya menguji sistem secara ilmiah dan terarah, bukan acak. | **P0 (Must)** |
+| **US-07** | Pengguna | Mencatat hasil percobaan (*attempts*) dari hipotesis | Riwayat keberhasilan atau kegagalan serangan terekam jelas. | **P0 (Must)** |
+| **US-08** | Pengguna | Melewati *Phase Gate* dengan konfirmasi kepatuhan | Saya tidak melompat ke fase eksploitasi sebelum enumerasi tuntas. | **P0 (Must)** |
+| **US-09** | Pengguna | Meminta petunjuk progresif (*Level 0 s/d 6*) saat buntu | Saya mendapatkan dorongan arah berpikir tanpa terkena spoiler. | **P0 (Must)** |
+| **US-10** | Pengguna | Menandai sesi latihan selesai (*Complete Session*) | Saya dapat membuka evaluasi menyeluruh dan graf solusi resmi. | **P0 (Must)** |
+| **US-11** | Pengguna | Melihat komparasi *User Path* vs *Reference Path* | Saya mengetahui efisiensi rute saya dibandingkan rute pembuat mesin. | **P0 (Must)** |
+| **US-12** | Pengguna | Membaca referensi metodologi dan *Knowledge Base* | Saya dapat belajar teori pengujian berbagai protokol secara mandiri. | **P1 (Should)** |
+| **US-13** | Pengguna | Mengonfigurasi Gemini API Key dan display density | Aplikasi sesuai dengan preferensi visual dan kuota AI saya. | **P1 (Should)** |
 
 ---
 
-# 13. AI Trust Boundary
+## 5. Alur Pengguna & Pengalaman Antarmuka (User Journey & UX)
 
-Semua AI-generated structured data wajib melewati:
+### 5.1 Alur Utama Pembuatan Sesi Pelatihan (*New Training Generation*)
 
-```text
-Gemini
-→ Structured Output
-→ Zod Validation
-→ Application Logic
-→ Database
+```
+[ Halaman /training/new ]
+       ↓
+[ Unggah File Writeup (PDF/MD/TXT) ] ──> Validasi Ukuran (Maks 10MB) & Integritas File
+       ↓
+[ Pipeline Orkestrasi Otomatis (Server-Side) ]
+  ├── 1. Ekstraksi Teks Writeup
+  ├── 2. Ekstraksi Fakta via Gemini (Target, OS, Port, Vuln, Flag, Credentials)
+  ├── 3. Konstruksi Graf Serangan Tersembunyi (Nodes & Edges)
+  └── 4. Verifikasi Deterministik Graf (Solvability, Terminal Node, Non-Empty)
+       ↓
+[ Pratinjau Profil Mesin (Machine Profile) ] ──> Nama Mesin, OS, Tingkat Kesulitan
+       ↓
+[ Klik "Start Training" ] ──> Inisialisasi Sesi Baru di Database ──> Masuk ke Workspace
 ```
 
-AI output tidak boleh langsung menjadi trusted application state.
+### 5.2 Alur Utama Ruang Kerja Latihan (*Training Workspace Execution*)
 
-Jika validation gagal:
-
-- repair;
-- retry;
-- atau tandai generation failed.
-
----
-
-# 14. Hidden Machine Knowledge
-
-Hidden Machine Knowledge merupakan internal knowledge hasil writeup analysis.
-
-Terdiri dari:
-
-- extracted facts;
-- attack graph;
-- solution checkpoints;
-- attack dependencies;
-- vulnerability relationships;
-- reference attack path.
-
-Hidden knowledge:
-
-- server-side only;
-- tidak dikirim penuh ke browser;
-- tidak disimpan ke browser storage;
-- tidak digunakan untuk langsung mengaktifkan visible checklist;
-- hanya digunakan sesuai spoiler policy.
-
----
-
-# 15. Hidden Attack Graph
-
-Attack Graph merepresentasikan machine-specific solution dependency.
-
-Contoh:
-
-```text
-Port Discovery
-→ HTTP Enumeration
-→ Content Discovery
-→ Sensitive Backup
-→ Credential Exposure
-→ SSH
-→ Local Enumeration
-→ Sudo Misconfiguration
-→ Root
+```
+[ Masuk /training/[sessionId] (Fase Awal: Reconnaissance) ]
+       ↓
+[ Pengguna Menjalankan Nmap Manual di Kali Linux ]
+       ↓
+[ Pengguna Menambahkan Finding Baru ] ──> Contoh: "Port 80/tcp open HTTP Apache 2.4.41"
+       ↓
+[ Status Finding: Inferred ──> Pengguna Klik "Confirm Finding" ]
+       ↓
+[ Context Engine & Playbook Resolver Mendeteksi Layanan HTTP ]
+       ↓
+[ HTTP Playbook Checklist Muncul Secara Dinamis di Checklist Section ]
+       ↓
+[ Pengguna Menyelesaikan Checklist Wajib (Required Checks) ]
+       ↓
+[ Pengguna Mengajukan Transisi Fase (Phase Gate) ]
+       │
+       ├───> Jika Ada Checklist Required Belum Selesai:
+       │        Tampilkan Modal Peringatan Pelanggaran Metodologi (*Deviation Warning*)
+       │        (Pengguna boleh memaksa lanjut, dicatat sebagai Methodology Deviation)
+       │
+       └───> Jika Seluruh Checklist Required Selesai:
+                Fase Berpindah Secara Bersih (Misal: ke Scanning & Vulnerability Analysis)
 ```
 
-Graph dapat memiliki branching:
+### 5.3 Spesifikasi Halaman & Ruang Kerja Antarmuka
 
-```text
-HTTP
-├── Directory Enumeration
-└── Client-Side Analysis
-        ↓
-   Credential Discovery
-        ↓
-       SSH
+#### 1. Dashboard Utama (`/`)
+* **Header Metrik:** Ringkasan aktivitas latihan (Sesi Aktif, Mesin Selesai, Total Temuan, Skor Metodologi Rata-rata).
+* **Kartu Sesi Terakhir (*Continue Training Card*):** Akses instan 1-klik untuk melanjutkan sesi latihan yang sedang berjalan.
+* **Peramban Sesi (*Session Browser*):** Daftar seluruh sesi dengan filter status (*In Progress*, *Completed*), label OS, tingkat kesulitan, dan dropdown aksi (Buka, Rename, Reset, Hapus Permanen).
+
+#### 2. Ruang Kerja Sesi Latihan (`/training/[sessionId]`)
+* **Top Phase Stepper:** Indikator visual progres 6 fase PTES (*Reconnaissance* -> *Scanning* -> *Threat Modeling* -> *Vulnerability Analysis* -> *Exploitation* -> *Post Exploitation*). Menampilkan status fase (*Locked*, *Active*, *Completed*) dan tombol *Phase Gate Action*.
+* **Kolom Kiri (Methodology & Checklist Panel):**
+  - Render dinamis grup checklist (*Core Methodology*, *Playbook Layanan*, *AI Suggested*).
+  - Tanda prioritas (*Required* merah/oranye, *Recommended* biru, *Suggested* abu-abu).
+  - Indikator asal-usul checklist (*Provenance Badge*).
+* **Kolom Tengah (Investigation Workstation):**
+  - Tabulasi kerja: **Findings** (bukti & layanan), **Hypotheses** (rumusan pengujian), **Attempts** (eksekusi pengujian), **Notes** (catatan bebas).
+  - Form pencatatan cepat dengan klasifikasi tipe konteks (*service, port, credential, vulnerability*).
+* **Kolom Kanan (Context & AI Mentor Panel):**
+  - **Live Context Summary:** Ringkasan attack surface yang telah dikonfirmasi pengguna.
+  - **AI Mentor Chat & Hint System:** Tombol *Get Hint* dengan pemilih level spoiler (0–6), penjelasan konsep metodologi, dan area tempel output terminal (*Paste Output Analyzer*).
+
+#### 3. Halaman Review & Evaluasi Sesi (`/training/[sessionId]/review`)
+* **Status Terkunci Sebelum Selesai:** Jika sesi belum berstatus `completed`, halaman menampilkan layar proteksi agar rute solusi tidak bocor sebelum waktunya.
+* **Tampilan Pasca Selesai (*Unlocked View*):**
+  - **Tab Overview:** Ringkasan waktu, total perintah, jumlah petunjuk yang digunakan, dan skor kepatuhan fase.
+  - **Tab User Path:** Visualisasi linimasa kronologis seluruh aksi pengguna dari observasi pertama hingga root.
+  - **Tab Comparison (User vs Reference Path):** Komparasi rute pengguna berdampingan dengan graf serangan resmi *writeup*. Menyorot langkah yang efisien, langkah yang terlewat, dan jalan buntu yang sempat dimasuki.
+  - **Tab Methodology Score:** Metrik kuantitatif (*Phase Gate Compliance*, *Hypothesis Discipline*, *Recon Coverage*).
+  - **Tab AI Review Narrative:** Ulasan kualitatif kebiasaan pengujian dan saran peningkatan untuk mesin berikutnya.
+
+---
+
+## 6. Kebutuhan Fungsional Produk (Functional Requirements)
+
+### 6.1 Manajemen Writeup & Ekstraksi Fakta (FR-WRITEUP)
+
+| ID | Nama Kebutuhan | Deskripsi & Aturan Bisnis |
+|---|---|---|
+| **FR-WRITEUP-01** | Unggah Dokumen | Mendukung format berkas `.pdf`, `.md`, dan `.txt` dengan ukuran maksimal 10 MB. |
+| **FR-WRITEUP-02** | Ekstraksi Teks Bersih | Mengekstrak teks utuh dari dokumen writeup tanpa mengeksekusi kode berbahaya. |
+| **FR-WRITEUP-03** | Ekstraksi Fakta AI | Menganalisis dokumen menggunakan model Gemini terkonfigurasi untuk mengekstrak fakta terstruktur: nama mesin, OS, ports, services, vulnerabilities, initial access, privilege escalation, dan flags. |
+| **FR-WRITEUP-04** | Validasi Skema Zod | Seluruh output ekstraksi AI wajib lolos validasi skema Zod ketat sebelum disimpan ke database. |
+| **FR-WRITEUP-05** | Idempoten Ekstraksi | Jika proses ekstraksi diulang pada writeup yang sama, sistem menghasilkan struktur data yang konsisten. |
+
+### 6.2 Graf Serangan Tersembunyi (FR-GRAPH)
+
+| ID | Nama Kebutuhan | Deskripsi & Aturan Bisnis |
+|---|---|---|
+| **FR-GRAPH-01** | Konstruksi Graf Serangan | Menyusun fakta hasil ekstraksi ke dalam bentuk *Directed Acyclic Graph* (DAG) yang terdiri dari simpul (*nodes*) dan sisi dependensi (*edges*). |
+| **FR-GRAPH-02** | Taksonomi Tipe Simpul | Simpul graf wajib memiliki tipe valid: `port`, `service`, `vulnerability`, `credential`, `action`, `access_user`, `access_root`. |
+| **FR-GRAPH-03** | Verifikasi Solvabilitas | Sistem otomatis memverifikasi bahwa graf memiliki minimal 1 jalur lengkap dari simpul awal (*entry point*) menuju simpul terminal (`access_root`). |
+| **FR-GRAPH-04** | Isolasi Graf Sisi Server | Data simpul dan sisi graf disimpan dalam database dan **dilarang keras dikirim ke browser** sebelum sesi berstatus `completed`. |
+
+### 6.3 Mesin Metodologi & Phase Gate (FR-METHOD)
+
+| ID | Nama Kebutuhan | Deskripsi & Aturan Bisnis |
+|---|---|---|
+| **FR-METHOD-01** | Metodologi PTES 6-Fase | Mendukung 6 fase formal: `reconnaissance`, `scanning`, `threat_modeling`, `vulnerability_analysis`, `exploitation`, `post_exploitation`. |
+| **FR-METHOD-02** | Phase Gate Deterministik | Transisi dari satu fase ke fase berikutnya dibatasi oleh *Phase Gate*. Seluruh checklist berprioritas `required` wajib tuntas untuk transisi bersih. |
+| **FR-METHOD-03** | Pencatatan Deviasi | Jika pengguna memilih untuk memaksa lanjut (*override*) saat checklist `required` belum selesai, sistem mencatat entitas `methodology_deviations` secara permanen untuk evaluasi akhir. |
+| **FR-METHOD-04** | Perhitungan Progres Eksak | Persentase progres dihitung secara matematis berdasarkan rasio checklist `required` dan `recommended` yang selesai, bukan perkiraan AI. |
+
+### 6.4 Registri Playbook & Checklist Dinamis (FR-PLAYBOOK)
+
+| ID | Nama Kebutuhan | Deskripsi & Aturan Bisnis |
+|---|---|---|
+| **FR-PLAYBOOK-01** | Registri Playbook Bawaan | Menyediakan playbook metodologi standar untuk layanan populer: HTTP, SSH, SMB, FTP, DNS, SNMP, SMTP, SQL, Generic Service, Linux Post-Exploitation, Windows Post-Exploitation. |
+| **FR-PLAYBOOK-02** | Aktivasi Berbasis Bukti | Checklist playbook layanan hanya diaktifkan ke dalam sesi jika pengguna telah mengonfirmasi temuan bukti terkait (*confirmed evidence*). |
+| **FR-PLAYBOOK-03** | Penanganan Layanan Tak Dikenal | Jika pengguna menemukan layanan tanpa playbook spesifik, sistem otomatis mengaktifkan *Generic Service Enumeration Playbook*. |
+| **FR-PLAYBOOK-04** | Ekstensi Checklist AI | Saran checklist tambahan yang dihasilkan AI otomatis diklasifikasikan sebagai prioritas `suggested` dan tidak boleh memblokir *Phase Gate*. |
+| **FR-PLAYBOOK-05** | Stable Semantic Keys | Setiap item checklist memiliki kunci semantik unik (misal: `service.http.dir-bruteforce`) untuk rekonsiliasi dan pelacakan historis. |
+
+### 6.5 Ruang Kerja Investigasi (FR-INVESTIGATION)
+
+| ID | Nama Kebutuhan | Deskripsi & Aturan Bisnis |
+|---|---|---|
+| **FR-INVESTIGATION-01** | Siklus Temuan (Findings) | Mendukung 3 status bukti: `observed` (baru dicatat), `inferred` (hasil interpretasi alat/AI), dan `confirmed` (terverifikasi oleh pengguna). |
+| **FR-INVESTIGATION-02** | Perumusan Hipotesis | Memungkinkan pengguna membuat hipotesis pengujian dengan format: Asumsi -> Dasar Bukti -> Rencana Verifikasi -> Hasil (`open`, `confirmed`, `rejected`, `inconclusive`). |
+| **FR-INVESTIGATION-03** | Pencatatan Percobaan (Attempts)| Mencatat perintah eksploitasi nyata yang dijalankan di Kali Linux beserta output singkat dan status keberhasilannya. |
+| **FR-INVESTIGATION-04** | Catatan Lapangan (Notes) | Editor catatan bebas berbasis markdown untuk menyimpan coretan, kredensial sementara, dan observasi unik. |
+
+### 6.6 Sistem Bimbingan & AI Mentor (FR-MENTOR)
+
+| ID | Nama Kebutuhan | Deskripsi & Aturan Bisnis |
+|---|---|---|
+| **FR-MENTOR-01** | Bimbingan 7-Tingkat Spoiler | Menyediakan petunjuk berjenjang dari Level 0 hingga Level 6: L0 (Arah Metodologi), L1 (Kategori Area), L2 (Komponen Spesifik), L3 (Petunjuk Arah/Konseptual), L4 (Perintah/Parameter Spesifik), L5 (Langkah Eksploitasi Terarah), L6 (Pengungkapan Penuh / Solusi). |
+| **FR-MENTOR-02** | Minimisasi Konteks Tersembunyi | AI Mentor hanya diberikan potongan graf serangan yang relevan dengan simpul terdekat yang sedang dihadapi pengguna, mencegah kebocoran informasi masa depan. |
+| **FR-MENTOR-03** | Penjelasan Konsep Teoritis | Pengguna dapat menanyakan penjelasan konsep keamanan (misal: *"Jelaskan cara kerja LFI to RCE via log poisoning"*) tanpa memengaruhi sesi latihan. |
+| **FR-MENTOR-04** | Analisis Output Tempel | Menerima tempelan output terminal (misal hasil scan Nmap atau Nikto) dan menyarankan entitas temuan awal (*inferred findings*) untuk ditinjau pengguna. |
+
+### 6.7 Evaluasi Sesi & Metrik (FR-REVIEW)
+
+| ID | Nama Kebutuhan | Deskripsi & Aturan Bisnis |
+|---|---|---|
+| **FR-REVIEW-01** | Penyelesaian Sesi Selesai | Pengguna dapat menandai sesi selesai setelah mencapai akses root atau memutuskan mengakhiri latihan. |
+| **FR-REVIEW-02** | Pembukaan Reference Path | Graf serangan resmi dan seluruh fakta rahasia writeup dibuka ke pengguna untuk studi komparasi. |
+| **FR-REVIEW-03** | Rekonstruksi User Path | Mengurutkan seluruh temuan, hipotesis, petunjuk, dan percobaan pengguna secara kronologis menjadi graf rute nyata pengguna. |
+| **FR-REVIEW-04** | Metrik Disiplin Deterministik | Menghitung secara eksak: *Phase Gate Compliance %*, *Reconnaissance Coverage %*, *Hypothesis Discipline Ratio*, dan *Hint Penalty Score*. |
+
+---
+
+## 7. Model Data Konseptual (Data Dictionary)
+
+Model domain CTF Methodology Trainer dirancang dengan integritas relasional tinggi untuk mendukung rekonstruksi sejarah latihan yang akurat:
+
+```mermaid
+erDiagram
+    WRITEUPS ||--o{ GENERATION_RUNS : "dianalisis oleh"
+    GENERATION_RUNS ||--|| MACHINE_PROFILES : "menghasilkan"
+    MACHINE_PROFILES ||--|| ATTACK_GRAPHS : "memiliki"
+    ATTACK_GRAPHS ||--o{ ATTACK_NODES : "terdiri dari"
+    ATTACK_NODES ||--o{ ATTACK_EDGES : "dihubungkan oleh"
+    
+    FRAMEWORKS ||--o{ FRAMEWORK_PHASES : "memiliki"
+    FRAMEWORK_PHASES ||--o{ FRAMEWORK_CHECKS : "mendefinisikan"
+    
+    MACHINE_PROFILES ||--o{ TRAINING_SESSIONS : "menjadi dasar"
+    TRAINING_SESSIONS ||--o{ SESSION_PHASES : "menjalankan"
+    SESSION_PHASES ||--o{ SESSION_CHECKS : "memiliki"
+    TRAINING_SESSIONS ||--o{ FINDINGS : "mengumpulkan"
+    TRAINING_SESSIONS ||--o{ HYPOTHESES : "merumuskan"
+    HYPOTHESES ||--o{ ATTEMPTS : "diuji melalui"
+    TRAINING_SESSIONS ||--o{ HINT_RECORDS : "menggunakan"
+    TRAINING_SESSIONS ||--o{ METHODOLOGY_DEVIATIONS : "mencatat"
 ```
 
-Attack Graph merupakan machine-specific source of truth.
+### Kamus Entitas Utama Domain Produk
 
-Attack Graph bukan methodology source of truth.
-
----
-
-# 16. Automated Graph Verification
-
-User tidak melakukan manual review terhadap generated attack graph karena dapat menyebabkan spoiler.
-
-Sistem menggunakan automated verification.
-
-Verifier memeriksa:
-
-- missing critical steps;
-- unsupported nodes;
-- incorrect dependencies;
-- hallucinated findings;
-- incorrect initial access;
-- incorrect privilege escalation;
-- inconsistent ordering.
-
-Verifier menghasilkan:
-
-- confidence score;
-- missing_steps[];
-- unsupported_steps[];
-- conflicts[];
-- verification status.
-
-Possible statuses:
-
-- Validated
-- Low Confidence
-- Failed
-
-Training tidak boleh dibuat secara silently dari invalid graph.
+1. **`writeups`:** Arsip berkas panduan asli yang diunggah pengguna (nama berkas, konten mentah, hash integritas).
+2. **`generation_runs`:** Jejak proses orkestrasi pembedahan writeup oleh AI (status ekstraksi, verifikasi, dan durasi).
+3. **`machine_profiles`:** Identitas publik mesin hasil ekstraksi (nama mesin, estimasi kesulitan, sistem operasi target).
+4. **`attack_graphs`:** Kunci jawaban graf serangan tersembunyi yang merepresentasikan jalur eksploitasi resmi writeup.
+5. **`training_sessions`:** Sesi latihan pengguna aktif (status sesi, waktu mulai, waktu selesai, fase aktif saat ini).
+6. **`session_phases`:** Instansiasi 6 fase PTES dalam sesi aktif beserta status penguncian dan stempel waktu selesai.
+7. **`session_checks`:** Item checklist dinamis yang aktif dalam sesi (judul, prioritas, status centang, bukti asal-usul/provenance).
+8. **`findings`:** Bukti nyata yang ditemukan pengguna di target (IP, port, protokol, versi banner, status verifikasi).
+9. **`hypotheses`:** Rencana pengujian ilmiah yang disusun pengguna sebelum meluncurkan serangan.
+10. **`attempts`:** Catatan pelaksanaan pengujian nyata di Kali Linux beserta parameter dan hasil observasi.
+11. **`hint_records`:** Catatan riwayat penggunaan bantuan AI (level petunjuk yang diminta, stempel waktu, penalti skor).
+12. **`methodology_deviations`:** Catatan pelanggaran metodologi saat pengguna melompati *Phase Gate* yang belum tuntas.
 
 ---
 
-# 17. Spoiler Levels
+## 8. Filosofi Keamanan & Privasi Produk
 
-Progressive spoiler levels:
+Keamanan dalam CTF Methodology Trainer memiliki makna ganda: **Keamanan Sistem Lokal** dan **Integritas Kerahasiaan Edukasi (*Anti-Spoiler Security Boundary*)**:
 
-## Level 0 — Methodology
+### 8.1 Batas Isolasi Pengetahuan Rahasia (*Hidden Knowledge Security Boundary*)
+* **Server-Side Lockdown:** Kunci jawaban lengkap, attack graph, daftar kredensial tersembunyi, dan instruksi eksploitasi writeup **disimpan secara eksklusif di server (PostgreSQL)**.
+* **Zero Client Leakage:** Komponen UI, state browser (React State/Zustand/Redux), `localStorage`, `sessionStorage`, HTML source, maupun API response yang dikirim ke browser **DILARANG** memuat simpul graf solusi masa depan.
+* **Anti-CSS Hiding:** Menyembunyikan solusi di elemen HTML dengan `display: none` atau `opacity: 0` adalah pelanggaran keamanan produk. Data yang belum berhak dilihat pengguna tidak boleh meninggalkan memori server.
 
-Memberikan framework guidance.
-
-Example:
-
-"Pastikan semua exposed services sudah dienumerasi sebelum berpindah ke exploitation."
-
-## Level 1 — Concept
-
-Example:
-
-"Web application dapat memiliki resource yang tidak ditampilkan melalui navigasi utama."
-
-## Level 2 — Technique
-
-Example:
-
-"Pertimbangkan melakukan content discovery."
-
-## Level 3 — Tool
-
-Example:
-
-"Tool seperti ffuf, feroxbuster, atau gobuster dapat digunakan."
-
-## Level 4 — Machine Context
-
-Memberikan contextual machine-specific hint.
-
-## Level 5 — Partial Solution
-
-Memberikan sebagian solution path.
-
-## Level 6 — Full Reveal
-
-Memberikan explicit solution.
-
-Default:
-
-Spoiler Level 0.
+### 8.2 Kebijakan Privasi & Kredensial AI
+* **Kerahasiaan Kunci API:** API Key Gemini disimpan di environment server lokal (`GEMINI_API_KEY`) atau dienkripsi dalam file konfigurasi lokal (`.settings.local.json`). Kunci tidak pernah diekspos ke browser (`NEXT_PUBLIC_`).
+* **Zero Remote Telemetry:** Latihan dilakukan secara lokal di komputer pengguna. Tidak ada data sesi, temuan, atau kredensial mesin target yang dikirim ke server analitik pihak ketiga selain panggilan inferensi ke Google Gemini API.
 
 ---
 
-# 18. PTES Methodology
+## 9. Kebutuhan Non-Fungsional (Kualitas Sistem)
 
-MVP menggunakan PTES yang diadaptasi untuk CTF.
+### 9.1 Kecepatan & Kinerja (*Performance*)
+* **Latensi Interaksi Lokal:** Aksi interaksi pengguna lokal (mencentang checklist, membuat finding, merekam hipotesis, transisi tab) harus memiliki respon instan dengan perceived latency **< 100 ms**.
+* **Kecepatan Inferensi AI:** Respons AI Mentor dan pembuatan petunjuk ditargetkan selesai dalam **< 4 detik** (tergantung latensi jaringan ke Gemini API).
+* **Efisiensi Memori Desktop:** Aplikasi web beroperasi ringan di peramban modern dengan konsumsi memori stabil tanpa *memory leak*.
 
-`Lab Setup / Pre-Engagement` adalah langkah persiapan lab dan target sebelum learner memasuki metodologi Training Session. Langkah ini tetap penting, tetapi bukan `FrameworkPhase` ketujuh dan tidak memiliki Phase Gate.
+### 9.2 Keandalan & Degradasi Elegan (*Graceful Degradation*)
+* **100% Fungsi Metodologi Mandiri Offline:** Jika koneksi internet terputus atau kuota Gemini API habis (*HTTP 429*), seluruh fungsi inti latihan (checklist PTES, built-in playbooks, pencatatan temuan, perumusan hipotesis, perekaman attempt, phase gates, dan penyimpanan sesi) **wajib tetap berfungsi normal 100%**.
+* **Penanganan Rate Limit Cerdas:** Jika panggilan AI mengalami *rate limit*, sistem menampilkan dialog yang informatif dan tombol *Retry*, tanpa merusak atau mereset status sesi yang sedang berlangsung.
 
-```text
-Lab Setup / Pre-Engagement (persiapan)
-        ↓
-Training Session dimulai
-        ↓
-Enam FrameworkPhase kanonis
+### 9.3 Aksesibilitas & Responsivitas (*Accessibility & Responsive*)
+* **Kontras Standar WCAG 2.1 AA:** Seluruh elemen teks, badge prioritas, dan tombol aksi memenuhi standar rasio kontras visual minimal 4.5:1 untuk mode gelap.
+* **Dukungan Keyboard Penuh:** Navigasi antar tabulasi kerja dan aksi checklist dapat dioperasikan secara ergonomis menggunakan keyboard (`Tab`, `Space`, `Enter`).
+* **Fokus Desktop:** Tata letak dioptimalkan untuk layar laptop dan desktop (lebar minimum 1024px) yang berdampingan dengan terminal Kali Linux pengguna.
+
+---
+
+## 10. Panduan Desain Antarmuka & Sistem Visual
+
+### 10.1 Arah Estetika Visual: *Restrained Dark Technical*
+Mengacu pada pedoman [`docs/frontend.md`](frontend.md), antarmuka CTF Methodology Trainer mencerminkan workstation analis keamanan profesional yang tenang dan presisi:
+* **Nuansa Gelap Berbobot (*Dark Technical*):** Latar belakang hitam pekat dan abu-abu gelap terkalibrasi (`#090A0F`, `#12151C`, `#1A1E29`) tanpa efek menyilaukan.
+* **Aksen Hijau Zamrud (*Primary Emerald Accent*):** Warna hijau terarah (`#10B981`) digunakan secara selektif untuk mengindikasikan status sukses, aksi utama, dan fase aktif.
+* **Larangan Estetika Murahan (*Anti-Cliché*):** Tidak menggunakan teks terminal Matrix hijau neon norak, tidak ada animasi hologram palsu, tidak ada efek *glassmorphism* berat, dan tidak ada grafik dasbor dekoratif yang tidak berguna.
+
+### 10.2 Sistem Prioritas & Lencana Status (*Badges & Hierarchy*)
+
+| Prioritas / Status | Tampilan Visual | Makna Operasional |
+|---|---|---|
+| **REQUIRED** | Lencana Merah/Oranye Tegas | Checklist wajib metodologis; memblokir *Phase Gate* jika belum tuntas. |
+| **RECOMMENDED**| Lencana Biru Baja (*Steel Blue*) | Checklist sangat disarankan; memengaruhi skor *Recon Coverage*. |
+| **SUGGESTED**  | Lencana Abu-abu Netral | Saran eksplorasi opsional dari AI; tidak pernah memblokir *Phase Gate*. |
+| **CONFIRMED**  | Lencana Hijau Zamrud | Bukti yang telah divalidasi pengguna; menjadi pemicu aktifnya playbook. |
+| **INFERRED**   | Lencana Kuning Amber | Hasil interpretasi alat/AI yang masih memerlukan konfirmasi pengguna. |
+
+### 10.3 Mode Kepadatan Layar (*Display Density Modes*)
+Mendukung 3 mode kepadatan tampilan yang dapat diatur di menu Pengaturan:
+* **Comfortable (Default):** Jarak antar kartu lega dan nyaman untuk pembacaan santai.
+* **Compact:** Pengurangan padding dan font size untuk memaksimalkan jumlah informasi teknis di layar monitor laptop kecil.
+* **Dense:** Kepadatan tinggi mirip tampilan terminal untuk analis yang terbiasa dengan efisiensi ruang maksimal.
+
+---
+
+## 11. Kriteria Penerimaan & Skenario Sukses (Acceptance Criteria)
+
+### Skenario 1: Penegakan Disiplin Metodologi & Phase Gate
+* **Kondisi Awal:** Arga berada di fase *Scanning & Enumeration*. Terdapat checklist *Required*: *"Identify open ports and banners"*. Checklist tersebut belum dicentang.
+* **Aksi:** Arga mengklik tombol *"Proceed to Threat Modeling"* pada Phase Stepper.
+* **Hasil:** Sistem menolak transisi otomatis dan memunculkan dialog peringatan *Phase Gate Incomplete*. Dialog menjelaskan bahwa checklist wajib belum selesai. Jika Arga memilih *"Proceed Anyway (Override)"*, sistem mengizinkan transisi namun mencatat `methodology_deviations` yang akan menurunkan skor disiplin pada evaluasi akhir.
+
+### Skenario 2: Aktivasi Playbook Berbasis Bukti Nyata (*No Spoiler Activation*)
+* **Kondisi Awal:** Writeup rahasia di server menyebutkan target menjalankan web server Apache pada port 8080. Di ruang kerja Arga, *HTTP Playbook* masih nonaktif.
+* **Aksi 1:** Arga menjalankan Nmap dan belum mencatat port 8080.
+* **Hasil 1:** *HTTP Playbook* tetap tidak terlihat di antarmuka Arga.
+* **Aksi 2:** Arga memasukkan temuan baru: `Port 8080/tcp HTTP Apache` dan mengklik *"Confirm Finding"*.
+* **Hasil 2:** *Context Engine* mendeteksi protokol HTTP terkonfirmasi, memicu *Playbook Resolver*, dan menambahkan grup checklist *HTTP Playbook* ke dalam antarmuka Arga secara dinamis tanpa membocorkan kerentanan spesifik.
+
+### Skenario 3: Pembukaan Rute Solusi Hanya Pasca-Selesai
+* **Kondisi Awal:** Sesi latihan masih berstatus `in_progress`.
+* **Aksi 1:** Arga mencoba membuka URL `/training/[sessionId]/review`.
+* **Hasil 1:** Halaman menampilkan layar proteksi: *"Session Not Yet Completed"*. Graf serangan resmi dan ulasan perbandingan dikunci rapat.
+* **Aksi 2:** Arga kembali ke ruang kerja, menyelesaikan latihan, dan menekan tombol *"Complete Training Session"*.
+* **Hasil 2:** Status sesi berubah menjadi `completed`. Arga dialihkan ke halaman review yang kini terbuka penuh, menampilkan perbandingan *User Path* vs *Reference Path*, rincian deviasi, dan ulasan AI.
+
+---
+
+## 12. Rencana Rilis & Milestone Roadmap (Tahap 01 – 30)
+
+Pengembangan CTF Methodology Trainer MVP telah diselesaikan secara terstruktur melalui 30 tahapan rekayasa berurutan:
+
+```
+[ Tahap 01 - 05: Pondasi Web & UI Shell ]     ==> COMPLETE (100%)
+                     │
+                     v
+[ Tahap 06 - 14: Engine Metodologi & DB ]     ==> COMPLETE (100%)
+                     │
+                     v
+[ Tahap 15 - 20: AI Ingestion & Attack Graph ] ==> COMPLETE (100%)
+                     │
+                     v
+[ Tahap 21 - 24: Guidance, Hints, & Review ]  ==> COMPLETE (100%)
+                     │
+                     v
+[ Tahap 25 - 27: Reference Surfaces & Config] ==> COMPLETE (100%)
+                     │
+                     v
+[ Tahap 28 - 30: Reliability, Lifecycle & AC] ==> COMPLETE (100% - PRODUCTION BASELINE)
 ```
 
-PTES — CTF Adapted menggunakan tepat enam `FrameworkPhase`, dalam urutan berikut:
+### Rincian Fase Pengembangan Produk
 
-1. Reconnaissance
-2. Threat Modeling
-3. Vulnerability Analysis
-4. Exploitation
-5. Post Exploitation
-6. Reporting
+| Fase | Tahapan Rekayasa | Nilai Produk & Kapabilitas yang Dihasilkan | Status |
+|---|---|---|:---:|
+| **Fase 1: Shell & Visual** | Tahap 01 – 05 | App Shell, TopBar, Sidebar, Navigasi, Dashboard, UI Sesi & Upload. | **COMPLETE** |
+| **Fase 2: Core Domain** | Tahap 06 – 10 | Skema PostgreSQL, PTES Engine, Entitas Findings, Hypotheses, Attempts. | **COMPLETE** |
+| **Fase 3: Dynamic Context** | Tahap 11 – 14 | Context Engine, Playbook Registry, Dynamic Checklist Reconciler. | **COMPLETE** |
+| **Fase 4: Knowledge Graph** | Tahap 15 – 20 | Ingestion Writeup, Gemini Fact Extraction, Hidden Graph & Verification. | **COMPLETE** |
+| **Fase 5: Guidance & Review** | Tahap 21 – 24 | Spoiler Policy Engine, AI Mentor, Progressive Hints, Session Review. | **COMPLETE** |
+| **Fase 6: Reference Surfaces**| Tahap 25 – 27 | Knowledge Base, Methodology Reference Viewer, Settings & Model Switch. | **COMPLETE** |
+| **Fase 7: Hardening & Acceptance**| Tahap 28 – 30 | Audit Reliabilitas, Manajemen Siklus Sesi (Delete/Reset), Verifikasi 26 Kriteria MVP. | **COMPLETE** |
 
-Intelligence gathering termasuk pekerjaan Reconnaissance, bukan fase terpisah. Methodology Engine, Phase Gate, dan UI utama bekerja pada enam fase tersebut.
-
----
-
-# 19. Methodology Engine
-
-Methodology Engine harus deterministic.
-
-Responsibilities:
-
-- phase state;
-- checklist priority;
-- checklist status;
-- phase completion;
-- phase gates;
-- progress calculation;
-- methodology deviations;
-- checklist lifecycle.
-
-AI tidak boleh secara langsung mengubah methodology state.
-
----
-
-# 20. Core Methodology Checklist
-
-Core checklist relatif stabil lintas machine.
-
-Example Reconnaissance:
-
-- Confirm target reachability
-- Perform initial port enumeration
-- Perform full TCP enumeration
-- Identify exposed services
-- Identify service versions
-- Map attack surface
-- Record findings
-- Summarize reconnaissance
-
-Checklist mendeskripsikan objective atau technique.
-
-Tidak harus memaksa tool tertentu.
-
-Preferred:
-
-"Perform content discovery."
-
-Avoid:
-
-"Run Gobuster."
-
----
-
-# 21. Dynamic Checklist Composition
-
-Checklist session tidak statis.
-
-Checklist dapat berasal dari:
-
-- core methodology;
-- service playbook;
-- OS playbook;
-- contextual extension;
-- AI-generated suggestion.
-
-Composition:
-
-PTES Core
-+
-Confirmed User Context
-+
-Relevant Playbooks
-+
-Contextual Extensions
-=
-Session Checklist
-
-Checklist dapat berkembang selama assessment.
-
----
-
-# 22. Schema-Driven Frontend
-
-Frontend harus bersifat data-driven.
-
-Frontend tidak memiliki dedicated machine-specific components.
-
-Avoid:
-
-- HttpChecklist.tsx
-- SmbChecklist.tsx
-- FtpChecklist.tsx
-- RedisChecklist.tsx
-- FriendlyMachinePage.tsx
-
-Preferred generic components:
-
-- PhaseSection
-- ChecklistGroup
-- ChecklistItem
-- FindingCard
-- HypothesisCard
-- AttemptCard
-- MentorPanel
-- ProgressIndicator
-- EvidenceBadge
-
-Frontend hanya merender checklist schema.
-
-Example:
-
-session.checklistGroups.map(group =>
-  render ChecklistGroup(group)
-)
-
-A previously unknown service must be displayable without frontend code changes.
-
----
-
-# 23. Evidence Model
-
-Tidak semua informasi dianggap sama.
-
-Evidence dapat memiliki state:
-
-## Observed
-
-User mencatat observation.
-
-## Inferred
-
-AI atau system menyimpulkan sesuatu dari evidence.
-
-## Confirmed
-
-User atau deterministic validation mengonfirmasi information.
-
-Hanya confirmed user-visible evidence yang boleh mengaktifkan machine-specific visible methodology.
-
----
-
-# 24. Spoiler-Safe Checklist Activation
-
-Hidden writeup knowledge tidak boleh langsung mengaktifkan checklist yang belum ditemukan user.
-
-Example:
-
-Hidden Graph knows:
-
-HTTP exists.
-
-User has not confirmed HTTP from learner-visible evidence.
-
-Result:
-
-HTTP playbook remains hidden.
-
-Port 80 dapat menjadi clue untuk enumeration, tetapi nomor port saja bukan bukti identitas service.
-
-Setelah learner memperoleh dan mengonfirmasi evidence service yang terstruktur:
-
-```text
-evidenceState = confirmed
-contextKind = service
-contextValue = HTTP
-        ↓
-Context Engine
-        ↓
-service:http
-```
-
-HTTP Playbook dapat menjadi applicable melalui Playbook Resolver. Hidden Graph dan nomor port tidak boleh mengonfirmasi service atau mengaktifkan playbook secara otomatis.
-
-Flow:
-
-```text
-Hidden Knowledge
-    X
-    |
-Cannot directly activate UI
-
-
-Confirmed User Evidence
-→ Context Engine
-→ Playbook Resolver
-→ Visible Checklist
-```
-
----
-
-# 25. Context Engine
-
-Context Engine mengubah confirmed evidence menjadi structured assessment context.
-
-Possible context tags:
-
-service:http
-service:ssh
-service:smb
-service:redis
-
-protocol:https
-
-os:linux
-os:windows
-
-surface:authentication
-surface:web
-surface:file-sharing
-surface:api
-
-access:remote
-access:local-shell
-
-technology:wordpress
-
-Context Engine merupakan penghubung antara Findings dan Dynamic Methodology.
-
----
-
-# 26. Context Normalization
-
-Raw service names harus dinormalisasi.
-
-Examples:
-
-ssl/http
-https
-Apache over TLS
-
-may normalize into:
-
-service:http
-protocol:https
-encrypted:true
-
-Examples:
-
-Microsoft-IIS
-nginx
-Apache
-
-may still activate:
-
-service:http
-
-Playbook resolver tidak boleh bergantung pada raw string secara langsung.
-
----
-
-# 27. Playbook Registry
-
-Application memiliki reusable Playbook Registry.
-
-Possible built-in playbooks:
-
-- HTTP
-- HTTPS
-- SSH
-- FTP
-- SMB
-- DNS
-- SNMP
-- LDAP
-- NFS
-- SMTP
-- database services
-- Linux Post Exploitation
-- Windows Post Exploitation
-
-Playbook merupakan structured methodology data.
-
-Bukan frontend component.
-
----
-
-# 28. Service Playbook Example
-
-HTTP Playbook:
-
-- Inspect application manually
-- Inspect response headers
-- Identify technology stack
-- Review application functionality
-- Inspect client-side resources
-- Perform content discovery
-- Consider virtual host enumeration
-- Identify authentication surfaces
-- Record findings
-
----
-
-# 29. Playbook Resolver
-
-Flow:
-
-```text
-Confirmed Context
-→ Playbook Resolver
-
-If known playbook exists:
-→ Load Playbook
-
-If no playbook exists:
-→ Generic Fallback
-→ Optional AI Contextual Extension
-```
-
----
-
-# 30. Unknown Service Handling
-
-Aplikasi harus tetap usable ketika service baru ditemukan.
-
-Example:
-
-1883/tcp MQTT
-
-Jika MQTT playbook belum tersedia:
-
-MQTT Enumeration
-Generic Playbook
-
-- Confirm protocol/service identity
-- Identify implementation/version
-- Determine authentication requirements
-- Identify exposed functionality
-- Identify accessible resources
-- Inspect permissions/security controls
-- Record interesting behavior
-- Develop attack hypotheses
-
-Frontend tidak perlu perubahan code.
-
----
-
-# 31. Generic Service Enumeration Playbook
-
-Fallback methodology:
-
-- Confirm service identity
-- Confirm implementation/version
-- Understand protocol purpose
-- Determine authentication requirements
-- Determine accessible functionality
-- Enumerate accessible resources
-- Inspect security controls
-- Record anomalous behavior
-- Develop attack hypotheses
-
-Generic fallback memastikan aplikasi tetap berguna bahkan untuk unknown technologies.
-
----
-
-# 32. AI Contextual Playbook Extension
-
-Gemini dapat menghasilkan additional suggested checks jika:
-
-- native playbook tidak tersedia;
-- native playbook belum mencakup discovered context;
-- service memiliki unusual implementation;
-- new application surface ditemukan.
-
-AI-generated extension harus:
-
-- structured;
-- Zod validated;
-- spoiler-safe;
-- methodology-oriented;
-- tidak mengambil hidden solution sebagai visible clue;
-- default sebagai Suggested.
-
-AI-generated check tidak boleh otomatis menjadi Required.
-
----
-
-# 33. Checklist Priority
-
-Checklist memiliki priority:
-
-## Required
-
-Minimum deterministic methodology requirement.
-
-Dapat memblokir Phase Gate.
-
-## Recommended
-
-Strong methodology practice.
-
-Tidak memblokir Phase Gate.
-
-Mempengaruhi coverage metrics.
-
-## Suggested
-
-Contextual exploration.
-
-Tidak memblokir Phase Gate.
-
-AI-generated checks secara default adalah Suggested.
-
----
-
-# 34. Checklist Provenance
-
-Setiap Session Check harus memiliki provenance.
-
-Possible sources:
-
-- core;
-- playbook;
-- contextual;
-- ai-generated.
-
-Example:
-
-CORE  
-Perform full TCP enumeration.
-
-PLAYBOOK — HTTP  
-Perform content discovery.
-
-CONTEXTUAL  
-Enumerate discovered virtual host.
-
-AI SUGGESTED  
-Review unusual HTTP method behavior.
-
----
-
-# 35. Checklist Activation Provenance
-
-Setiap dynamic check juga harus mengetahui apa yang mengaktifkannya.
-
-Example:
-
-activated_by:
-finding_123
-
-atau:
-
-activated_by:
-context_service_http
-
-Hal ini penting untuk:
-
-- debugging;
-- session review;
-- explainability.
-
----
-
-# 36. Checklist Reconciliation
-
-Dynamic checklist dapat menghasilkan overlapping checks.
-
-Methodology Engine harus melakukan reconciliation.
-
-Avoid:
-
-- Identify service version
-- Determine HTTP version
-- Check web server version
-
-Jika secara semantic sama.
-
-Setiap methodology check harus memiliki stable semantic identifier.
-
-Example:
-
-service.http.version-identification
-
-UI title dapat berbeda.
-
-Identity tetap stabil.
-
----
-
-# 37. Checklist Lifecycle
-
-Session Check tidak boleh tiba-tiba hilang tanpa history.
-
-Possible states:
-
-- inactive;
-- active;
-- completed;
-- skipped;
-- superseded.
-
-Jika context berubah, existing check tidak langsung dihapus.
-
-Hal ini menjaga session history tetap dapat direkonstruksi.
-
----
-
-# 38. Session Checklist Snapshot
-
-Ketika checklist diaktifkan untuk suatu session, definition disimpan sebagai snapshot.
-
-Perubahan global playbook di masa depan tidak boleh mengubah session lama.
-
-Benefit:
-
-- historical consistency;
-- reproducible session review;
-- stable metrics.
-
----
-
-# 39. Playbook Versioning
-
-Playbook mendukung simple versioning.
-
-Example:
-
-http@1
-http@2
-
-Session menyimpan versi playbook yang digunakan.
-
-MVP tidak membutuhkan complex dependency management.
-
----
-
-# 40. Reconnaissance Phase
-
-Example core checklist:
-
-- Confirm target
-- Confirm target reachability
-- Initial TCP enumeration
-- Full TCP enumeration
-- Service identification
-- Version identification
-- Attack surface mapping
-- Record findings
-- Recon summary
-
----
-
-# 41. Service-Specific Enumeration
-
-Setelah confirmed service ditemukan, relevant playbook aktif.
-
-Example:
-
-Detected:
-
-22 SSH
-80 HTTP
-
-Visible methodology may expand into:
-
-Reconnaissance
-
-CORE
-✓ Port enumeration
-✓ Service identification
-
-HTTP Enumeration
-□ Inspect web application
-□ Identify technologies
-□ Perform content discovery
-□ Review authentication surface
-
-SSH Enumeration
-□ Identify authentication surface
-□ Record version/context
-
----
-
-# 42. Threat Modeling
-
-Threat Modeling bertujuan membangun reasoning.
-
-Possible prompts:
-
-- Service mana yang paling menarik?
-- Apa trust boundaries yang terlihat?
-- Mana authentication surface?
-- Mana user-controlled input?
-- Mana resource sensitif?
-- Mana finding yang dapat menjadi attack hypothesis?
-- Attack surface mana yang memiliki highest potential impact?
-
-Threat Modeling untuk CTF harus ringan tetapi tetap meaningful.
-
----
-
-# 43. Vulnerability Analysis
-
-User mengubah evidence menjadi potential vulnerability.
-
-Possible categories:
-
-- information disclosure;
-- authentication weakness;
-- authorization weakness;
-- injection;
-- exposed files;
-- vulnerable software;
-- insecure configuration;
-- insecure permissions;
-- credential exposure;
-- service misconfiguration.
-
-Aplikasi harus membantu membedakan:
-
-Observation
-≠
-Finding
-≠
-Vulnerability
-≠
-Exploit
-
----
-
-# 44. Findings
-
-Finding schema:
-
-- title;
-- category;
-- evidence;
-- source;
-- importance;
-- notes;
-- evidence_state;
-- created_at.
-
-Example:
-
-Title:
-Exposed HTTP Service
-
-Evidence:
-TCP/80 Apache
-
-Category:
-Attack Surface
-
-State:
-Confirmed
-
----
-
-# 45. Hypotheses
-
-Hypothesis schema:
-
-- based_on;
-- hypothesis;
-- reasoning;
-- expected_result;
-- test_approach;
-- outcome.
-
-Example:
-
-Evidence:
-Accessible backup directory.
-
-Hypothesis:
-Backup resources may expose sensitive configuration.
-
-Expected Result:
-Credentials or configuration material.
-
-Test:
-Inspect accessible backup content.
-
----
-
-# 46. Attempts
-
-Flow:
-
-```text
-Hypothesis
-→ Attempt
-→ Result
-```
-
-Possible outcomes:
-
-- Confirmed;
-- Rejected;
-- Inconclusive.
-
-Attempt records may contain:
-
-- action;
-- notes;
-- result;
-- timestamp.
-
-Goal:
-
-- prevent repeated random testing;
-- preserve reasoning history;
-- support session review.
-
----
-
-# 47. Notes
-
-Notes merupakan free-form information.
-
-Notes dapat digunakan untuk:
-
-- temporary observations;
-- command references;
-- questions;
-- reminders;
-- manual notes.
-
-Notes tidak otomatis menjadi Findings.
-
----
-
-# 48. Phase Gates
-
-User tidak dianjurkan berpindah phase sebelum Required checks selesai.
-
-Example:
-
-Reconnaissance Gate
-
-Completed:
-✓ Port enumeration
-✓ Service identification
-
-Missing:
-□ Attack surface documented
-
-Status:
-NOT READY FOR NEXT PHASE
-
-User dapat:
-
-[ Return to Recon ]
-
-atau:
-
-[ Continue Anyway ]
-
-Jika Continue Anyway:
-
-MethodologyDeviation dicatat.
-
----
-
-# 49. Phase Gate Rules
-
-Hanya Required deterministic checks yang boleh memblokir gate.
-
-Recommended:
-
-- tidak memblokir;
-- mempengaruhi coverage.
-
-Suggested:
-
-- tidak memblokir;
-- hanya exploration.
-
-AI-generated checks tidak boleh mengubah Phase Gate secara langsung.
-
----
-
-# 50. Progress Calculation
-
-Progress dihitung secara deterministic.
-
-AI tidak menentukan percentage.
-
-Example:
-
-Required Progress:
-completed required checks
-/
-activated required checks
-
-Coverage dapat memasukkan Recommended checks secara terpisah.
-
-Suggested checks tidak perlu menurunkan core progress.
-
----
-
-# 51. Exploitation Phase
-
-Exploitation dilakukan ketika evidence dan hypothesis cukup.
-
-Preferred workflow:
-
-```text
-Evidence
-→ Finding
-→ Hypothesis
-→ Test
-→ Confirmed
-→ Exploitation
-```
-
-Aplikasi tidak boleh mendorong user menuju exact hidden solution hanya karena attack graph mengetahuinya.
-
----
-
-# 52. Initial Access
-
-Setelah initial access diperoleh, user dapat mencatat:
-
-- access method;
-- user;
-- privilege level;
-- evidence;
-- timestamp.
-
-Initial Access dapat mengaktifkan:
-
-access:local-shell
-
-dan OS-specific Post Exploitation playbook.
-
----
-
-# 53. Post Exploitation
-
-Example Linux checklist:
-
-- Identify current user
-- Identify groups
-- Identify OS
-- Inspect network configuration
-- Inspect processes
-- Inspect services
-- Inspect local credentials
-- Inspect sudo privileges
-- Inspect SUID
-- Inspect capabilities
-- Inspect scheduled tasks
-- Inspect writable locations
-- Inspect configuration
-- Develop privilege escalation hypotheses
-
-Example Windows checklist:
-
-- Identify current user
-- Identify groups
-- Inspect privileges
-- Inspect services
-- Inspect scheduled tasks
-- Inspect installed software
-- Inspect registry
-- Inspect credentials
-- Identify escalation hypotheses
-
----
-
-# 54. Reporting
-
-Reporting minimum:
-
-- target;
-- attack surface;
-- findings;
-- initial access;
-- privilege escalation;
-- attack path;
-- evidence;
-- root cause;
-- impact;
-- mitigation;
-- methodology notes.
-
-Reporting tetap ringan untuk MVP.
-
----
-
-# 55. AI Mentor
-
-AI Mentor tersedia selama session.
-
-Context:
-
-- current phase;
-- active checklist;
-- completed checks;
-- findings;
-- hypotheses;
-- attempts;
-- context tags;
-- relevant hidden knowledge;
-- spoiler level.
-
-Core instruction:
-
-> Give the least revealing guidance that enables meaningful progress.
-
----
-
-# 56. AI Mentor Example
-
-User:
-
-"Saya menemukan SSH dan HTTP. Apakah langsung coba SSH?"
-
-Preferred response:
-
-"Sebelum melakukan authentication attempts, pastikan exposed services sudah dienumerasi dengan cukup dan attack surface sudah dipahami."
-
-Avoid:
-
-"HTTP adalah jalur utama. Cari /backup."
-
----
-
-# 57. Progressive Hint System
-
-Hint progression:
-
-1. Methodology Hint
-2. Concept Hint
-3. Technique Hint
-4. Tool Hint
-5. Machine Context Hint
-6. Partial Solution
-7. Full Reveal
-
-Semua hint dicatat.
-
----
-
-# 58. Explain Concept
-
-User dapat meminta AI menjelaskan:
-
-- content discovery;
-- IDOR;
-- SUID;
-- sudo;
-- capabilities;
-- authentication;
-- privilege escalation;
-- virtual hosts;
-- SMB shares;
-- dan konsep lainnya.
-
-Concept explanation harus sebisa mungkin machine-agnostic.
-
----
-
-# 59. Paste Output
-
-MVP+ dapat mendukung Paste Output.
-
-Possible inputs:
-
-- Nmap;
-- ffuf;
-- feroxbuster;
-- gobuster;
-- smbclient;
-- sudo -l;
-- id;
-- ss;
-- netstat;
-- process listings.
-
-AI menghasilkan Candidate Observations.
-
-Candidate Observation:
-
-inferred
-
-User kemudian dapat:
-
-[ Confirm Finding ]
-
-baru context diaktifkan.
-
-AI tidak boleh otomatis mengubah checklist dari unconfirmed pasted output.
-
----
-
-# 60. Session States
-
-TrainingSession status:
-
-- Not Started
-- In Progress
-- Paused
-- Completed
-
-Session stores:
-
-- target IP;
-- started_at;
-- completed_at;
-- current phase;
-- checklist snapshot;
-- findings;
-- hypotheses;
-- attempts;
-- notes;
-- hints;
-- methodology deviations;
-- activated contexts.
-
-Target IP merupakan Session data.
-
-Bukan Machine permanent data.
-
----
-
-# 61. Session Completion
-
-MVP menggunakan manual completion confirmation.
-
-Possible objective:
-
-- User flag
-- Root flag
-- Administrator
-- Challenge objective
-
-User clicks:
-
-[ Complete Machine ]
-
-Setelah completion:
-
-- session locked as completed;
-- reference solution can be revealed;
-- review generated.
-
----
-
-# 62. Reference Path Reveal
-
-Hidden Attack Graph tetap terkunci selama assessment.
-
-After completion:
-
-Reference Path
-Unlocked
-
-User dapat melihat writeup-derived attack path.
-
----
-
-# 63. User Path
-
-User Path direkonstruksi dari:
-
-- findings;
-- hypotheses;
-- attempts;
-- initial access;
-- privilege escalation;
-- timestamps.
-
-User Path tidak harus identik dengan Reference Path.
-
-Alternative valid path tetap dianggap legitimate.
-
----
-
-# 64. Session Review
-
-Session Review membandingkan:
-
-User Process
-vs
-Reference Machine Path
-
-Tujuan bukan menentukan:
-
-"Apakah user mengikuti writeup?"
-
-Tujuannya:
-
-"Apakah user bekerja dengan methodology yang baik?"
-
----
-
-# 65. Deterministic Review Metrics
-
-Semua numeric score harus explainable.
-
-AI tidak boleh membuat arbitrary scores.
-
-Possible metrics:
-
-## Recon Coverage
-
-completed required/recommended recon checks
-/
-activated required/recommended recon checks
-
-## Phase Gate Compliance
-
-phases entered without override
-/
-total gated transitions
-
-## Hypothesis Discipline
-
-validated attack attempts associated with hypotheses
-/
-relevant attack attempts
-
-## Documentation Coverage
-
-documented meaningful findings
-/
-confirmed session findings
-
-## Hint Usage
-
-count from Hint records.
-
-## Solution Reveal
-
-count from spoiler level escalation.
-
-AI boleh membuat narrative summary dari metrics.
-
-Angka tetap deterministic.
-
----
-
-# 66. Methodology Review Example
-
-Recon Coverage:
-92%
-
-Phase Gate Compliance:
-83%
-
-Hypothesis Discipline:
-76%
-
-Documentation Coverage:
-88%
-
-Hints Used:
-3
-
-Machine-Specific Hints:
-1
-
-Full Solution Reveals:
-0
-
-Phase Overrides:
-1
-
----
-
-# 67. Improvement Feedback
-
-System dapat menunjukkan:
-
-Areas to Improve
-
-- Full service enumeration completed late.
-- Threat Modeling skipped before first authentication attempt.
-- Scheduled task enumeration not completed.
-- Multiple attempts were performed without recorded hypotheses.
-
-Feedback harus grounded pada session data.
-
----
-
-# 68. Learning History
-
-Completed sessions disimpan.
-
-Dashboard dapat menampilkan:
-
-Friendly
-Completed
-100%
-
-Baseme
-In Progress
-28%
-
-Machine history menyimpan:
-
-- findings;
-- hypotheses;
-- attempts;
-- hints;
-- notes;
-- methodology metrics;
-- reference path;
-- report.
-
----
-
-# 69. Dashboard
-
-Primary Dashboard:
-
-- New Training
-- Continue Session
-- Recent Sessions
-- Completed Sessions
-- Methodology Progress
-
----
-
-# 70. Main Navigation
-
-Suggested navigation:
-
-- Dashboard
-- Training Sessions
-- New Training
-- Methodology
-- Knowledge Base
-- Settings
-
----
-
-# 71. Session Navigation
-
-Session tabs:
-
-- Training
-- Notes
-- Findings
-- Hypotheses
-- Progress
-- Resources
-
----
-
-# 72. Dynamic Frontend Requirement
-
-Frontend layout harus tetap usable ketika:
-
-- machine berbeda;
-- jumlah phase checks berbeda;
-- service berbeda;
-- unknown service muncul;
-- playbook baru ditambahkan;
-- AI memberikan contextual suggestions.
-
-Acceptance criterion:
-
-> A previously unknown service can be rendered inside an existing Training Session without requiring a frontend code change.
-
----
-
-# 73. Visual Direction
-
-Primary theme:
-
-Dark mode.
-
-Character:
-
-- professional;
-- technical;
-- restrained;
-- readable;
-- slightly rounded;
-- information-dense;
-- security-tool oriented.
-
-Primary accent:
-
-Green.
-
-Secondary accents hanya untuk:
-
-- status;
-- warning;
-- information;
-- error.
-
-Avoid:
-
-- excessive gradients;
-- neon cyberpunk;
-- Matrix visual style;
-- glow;
-- glassmorphism;
-- giant typography;
-- excessive pill components;
-- excessive rounded cards;
-- generic AI SaaS visual patterns;
-- decorative dashboard charts;
-- heavy shadows.
-
----
-
-# 74. UX for Dynamic Checklist Changes
-
-Checklist yang baru aktif harus terlihat jelas.
-
-Possible UI:
-
-NEW
-
-Context:
-HTTP detected
-
-+ 4 enumeration checks activated
-
-Checklist tidak boleh berubah tanpa visual explanation.
-
----
-
-# 75. Checklist UI Provenance
-
-UI dapat secara subtle menunjukkan:
-
-CORE
-
-PLAYBOOK — HTTP
-
-CONTEXTUAL
-
-AI SUGGESTED
-
-Tujuannya agar user memahami mengapa checklist tersebut muncul.
-
----
-
-# 76. Technology Stack
-
-## Application
-
-- Next.js
-- App Router
-- TypeScript
-
-## UI
-
-- Tailwind CSS
-- shadcn/ui
-
-## Database
-
-- PostgreSQL
-
-## ORM
-
-- Drizzle ORM
-
-## Validation
-
-- Zod
-
-## AI
-
-- Gemini Developer API
-
-## Package Manager
-
-- pnpm
-
-## Source Control
-
-- Git
-- GitHub
-
----
-
-# 77. Development Tooling
-
-Development menggunakan:
-
-- Codex
-- Caveman
-- Taste Skill
-
-Tool tersebut bukan runtime dependencies.
-
-## Codex
-
-Coding agent utama.
-
-## Caveman
-
-Digunakan untuk membuat agent output lebih ringkas dan focused.
-
-## Taste Skill
-
-Digunakan untuk menjaga visual quality dan menghindari generic AI frontend.
-
----
-
-# 78. AI Architecture
-
-AI responsibilities:
-
-```text
-Gemini
-├── Fact Extractor
-├── Attack Graph Generator
-├── Graph Verifier
-├── Contextual Playbook Extender
-├── Hint Generator
-├── Concept Explainer
-└── Mentor
-```
-
-Tidak menggunakan satu giant prompt.
-
----
-
-# 79. Runtime AI Context
-
-Mentor request dapat menggunakan:
-
-Framework State
-+
-Session Checklist
-+
-Confirmed Context
-+
-Findings
-+
-Hypotheses
-+
-Attempts
-+
-Relevant Hidden Graph Portion
-+
-Spoiler Policy
-
-Tidak perlu mengirim seluruh original writeup pada setiap request.
-
----
-
-# 80. AI Usage Efficiency
-
-Writeup diproses sekali.
-
-Output structured disimpan.
-
-Mentor menggunakan structured context.
-
-Avoid:
-
-sending full 20-page writeup on every mentor message.
-
----
-
-# 81. Generation Idempotency
-
-Writeup processing harus idempotent.
-
-Generate:
-
-```text
-Writeup Hash
-→ Generation Run
-→ Facts
-→ Attack Graph
-→ Verification
-```
-
-Reload page tidak boleh memicu regeneration otomatis.
-
----
-
-# 82. Generation Caching
-
-Jika writeup yang sama sudah pernah diproses:
-
-system dapat menggunakan cached generation.
-
-User dapat memilih:
-
-[ Regenerate ]
-
-Regeneration menghasilkan generation version baru.
-
----
-
-# 83. AI Provenance
-
-AI-generated knowledge harus memiliki provenance.
-
-Example:
-
-Fact:
-Credential discovered
-
-source:
-writeup
-
-confidence:
-0.94
-
-source_reference:
-document section
-
-Checklist:
-
-source:
-ai-generated
-
-activated_by:
-context_service_mqtt
-
-Tujuannya:
-
-- debugging;
-- reliability;
-- explainability.
-
----
-
-# 84. AI Failure Handling
-
-If Gemini unavailable:
-
-Existing Training Session tetap usable.
-
-Available features:
-
-- PTES Core
-- Built-in playbooks
-- Findings
-- Hypotheses
-- Attempts
-- Notes
-- Progress
-- Phase Gates
-
-Temporarily unavailable:
-
-- AI Mentor;
-- AI-generated contextual extension;
-- AI concept explanation;
-- new AI hints.
-
-Core methodology tidak boleh bergantung penuh pada AI.
-
----
-
-# 85. New Training AI Dependency
-
-New Training membutuhkan AI untuk:
-
-- machine fact extraction;
-- attack graph generation;
-- automated verification.
-
-Jika AI tidak tersedia:
-
-Training generation dapat ditunda.
-
-Existing sessions tetap usable.
-
----
-
-# 86. Rate Limit Handling
-
-Gemini rate limit dapat terjadi.
-
-System harus:
-
-- menangkap 429;
-- menampilkan clear error;
-- menyediakan Retry;
-- tidak melakukan uncontrolled automatic retry;
-- tidak kehilangan session state.
-
----
-
-# 87. Security Requirements
-
-Gemini API key:
-
-server-side only.
-
-Allowed:
-
-GEMINI_API_KEY=...
-
-Not allowed:
-
-NEXT_PUBLIC_GEMINI_API_KEY=...
-
-Hidden knowledge tidak boleh berada di:
-
-- client bundle;
-- localStorage;
-- exposed API response;
-- page source.
-
----
-
-# 88. Trust Boundaries
-
-Gunakan validation pada:
-
-- uploaded file metadata;
-- extracted document content;
-- AI structured output;
-- form input;
-- API request;
-- dynamic checklist definitions.
-
----
-
-# 89. Core Domain Model
-
-Primary entities:
-
-Writeup
-
-GenerationRun
-
-MachineProfile
-
-AttackGraph
-- AttackNode
-- AttackEdge
-
-Framework
-- FrameworkPhase
-- FrameworkCheck
-
-Playbook
-- PlaybookCheck
-
-TrainingSession
-- SessionPhase
-- SessionCheck
-
-Finding
-
-Hypothesis
-
-Attempt
-
-Hint
-
-Note
-
-MethodologyDeviation
-
-ContextObservation
-
----
-
-# 90. High-Level Domain Relationships
-
-```text
-Writeup
-→ GenerationRun
-→ MachineProfile
-→ AttackGraph
-
-Framework
-→ FrameworkPhase
-→ FrameworkCheck
-
-Playbook
-→ PlaybookCheck
-
-TrainingSession
-├── SessionPhase
-├── SessionCheck
-├── Finding
-├── Hypothesis
-├── Attempt
-├── Hint
-├── Note
-├── ContextObservation
-└── MethodologyDeviation
-```
-
----
-
-# 91. Local-First Architecture
-
-Primary deployment:
-
-localhost.
-
-Environment:
-
-```text
-Windows Host
-├── CTF Methodology Trainer
-├── PostgreSQL
-├── Browser
-└── Virtualization
-    ├── Kali Linux
-    └── Vulnerable Target VM
-```
-
-Target VM tidak dikelola aplikasi.
-
----
-
-# 92. Performance Requirements
-
-Normal application interaction:
-
-target perceived latency < 500 ms.
-
-AI operations dapat lebih lambat.
-
-AI operations harus memiliki:
-
-- loading state;
-- progress state jika relevan;
-- failure state;
-- retry.
-
----
-
-# 93. Accessibility
-
-Frontend harus memperhatikan:
-
-- semantic HTML;
-- keyboard navigation;
-- visible focus state;
-- readable contrast;
-- accessible form labels;
-- meaningful status text;
-- status tidak hanya menggunakan warna.
-
----
-
-# 94. Responsive Requirements
-
-Primary target:
-
-Desktop >= 1280px.
-
-Secondary:
-
-Tablet.
-
-Mobile:
-
-Not primary MVP target.
-
----
-
-# 95. MVP Success Criteria
-
-MVP dianggap berhasil jika user dapat:
-
-1. membuka aplikasi lokal;
-2. membuat New Training;
-3. mengupload writeup;
-4. Gemini mengekstrak machine facts;
-5. Hidden Attack Graph dihasilkan;
-6. graph diverifikasi;
-7. Training Session dibuat;
-8. user memasukkan target IP;
-9. user mengikuti PTES workflow;
-10. dynamic checklist bekerja;
-11. service-specific playbook dapat aktif;
-12. unknown service tetap dapat ditangani;
-13. user mencatat finding;
-14. user membuat hypothesis;
-15. user mencatat attempt;
-16. Context Engine bekerja;
-17. spoiler-safe activation bekerja;
-18. Phase Gate bekerja;
-19. progressive hint bekerja;
-20. AI Mentor memahami session context;
-21. hidden solution tidak bocor secara default;
-22. user menyelesaikan machine;
-23. reference path dapat dibuka;
-24. methodology metrics dihitung;
-25. session review ditampilkan;
-26. session tetap tersimpan setelah application restart.
-
----
-
-# 96. Architecture Acceptance Criteria
-
-Architecture dianggap benar jika:
-
-- adding a new machine requires no frontend page;
-- adding a new playbook requires no new frontend component;
-- unknown service can render using generic fallback;
-- AI-generated checklist does not directly control Phase Gate;
-- hidden writeup facts cannot activate visible checklist;
-- session history remains stable after playbook updates;
-- AI downtime does not break existing session workflow;
-- progress metrics remain deterministic.
-
----
-
-# 97. Explicit Anti-Patterns
-
-Do not implement:
-
-if service === "http"
-  render HttpChecklist()
-
-if service === "smb"
-  render SmbChecklist()
-
-Do not allow:
-
-```text
-HiddenGraph
-→ directly activate checklist
-```
-
-Do not allow:
-
-```text
-Gemini
-→ set phaseComplete = true
-```
-
-Do not allow:
-
-```text
-AI suggested check
-→ required Phase Gate check
-```
-
-Do not allow:
-
-```text
-playbook update
-→ silently rewrite old session checklist
-```
-
----
-
-# 98. Development Principles
-
-- Prefer simple explicit architecture.
-- Avoid premature abstraction.
-- Avoid unnecessary dependencies.
-- Separate domain logic from UI.
-- Keep methodology deterministic.
-- Keep hidden knowledge server-side.
-- Validate AI output.
-- Preserve session history.
-- Prefer schema-driven rendering.
-- Prefer stable semantic identifiers.
-- Keep AI replaceable but do not overengineer provider abstraction.
-
----
-
-# 99. MVP Development Roadmap
-
-Roadmap ini menentukan **urutan delivery engineering**, bukan mengubah requirement produk pada bagian 1–98 dan 100–103. Stage yang disebut di sini adalah capability yang harus dibangun; status implementasi aktual dicatat pada `docs/IMPLEMENTATION_GUIDE.md`. Nomor Stage mengikuti urutan linear berikut.
-
-## Stage 01 — Foundation
-
-- Siapkan Next.js App Router, React, TypeScript, Tailwind CSS, shadcn/ui, pnpm, Git, design token dasar, dan quality scripts.
-- Fondasi ini diperlukan sebelum halaman serta modul domain dibangun.
-
-## Stage 02 — App Shell
-
-- Buat root layout, sidebar, top bar, navigasi bersama, aksesibilitas dasar, dan route placeholder.
-- Bergantung pada Foundation.
-
-## Stage 03 — Dashboard
-
-- Buat overview, tindakan New Training, recent sessions, dan tampilan progress menggunakan typed demo data sementara.
-- Bergantung pada App Shell; data persisten dihubungkan pada Stage lanjutan.
-
-## Stage 04 — Training Sessions
-
-- Buat browser sesi dengan pencarian, filter, sort, status, progress, dan tindakan per sesi memakai typed demo data sementara.
-- Bergantung pada App Shell; read model persisten tersedia setelah Stage 09 dan diintegrasikan pada Stage 14.
-
-## Stage 05 — New Training UI
-
-- Buat file drop zone PDF/TXT/MD, validasi browser, pemilihan PTES, serta state processing/error/ready sebagai presentasi UI.
-- Upload server dan generation nyata baru dibuat pada Stage 15–20.
-
-## Stage 06 — Database Foundation
-
-- Jalankan PostgreSQL lokal melalui Docker Compose dengan volume persisten; siapkan koneksi Drizzle, environment, dan database scripts.
-- Menjadi prasyarat schema relasional.
-
-## Stage 07 — Core Domain Model
-
-- Bentuk schema dan migration awal untuk Framework, FrameworkPhase, FrameworkCheck, TrainingSession, SessionPhase, SessionCheck, Finding, Hypothesis, Attempt, Note, dan MethodologyDeviation.
-- Domain tambahan dibuat saat capability terkait diperlukan, bukan sebagai tabel kosong.
-
-## Stage 08 — PTES Methodology Engine
-
-- Definisikan PTES — CTF Adapted, enam fase UI utama, core checks, semantic keys, priorities, Phase Gate, progress deterministik, dan seed kanonis idempotent.
-- Bergantung pada Framework schema Stage 07; AI tidak menentukan state metodologi.
-
-## Stage 09 — Training Session Core
-
-- Buat session dari snapshot Framework, lifecycle start/pause/resume, target IP, mutation checks, phase transition, override deviation, aggregate read, dan progress.
-- Bergantung pada Stage 08; completion final tetap Stage 23.
-
-## Stage 10 — Findings / Hypotheses / Attempts
-
-- Simpan evidence dan reasoning learner, confirmation eksplisit, validasi Zod, ownership antarsesi, serta aggregate read.
-- Bergantung pada Training Session Core; confirmation belum mengaktifkan playbook.
-
-## Stage 11 — Context Engine
-
-- Derivasi context kanonis dari confirmed structured user evidence, exact alias normalization, ContextObservation provenance, SessionContext, dan reconciliation multi-sumber.
-- Bergantung pada Findings; hidden facts tidak boleh membuat visible context.
-
-## Stage 12 — Playbook Registry
-
-- Definisikan typed playbooks dan checks, activation requirements, versioning sederhana, resolver, serta Generic Service Enumeration fallback.
-- Sediakan playbook native HTTP, SSH, SMB, FTP, DNS, SNMP, LDAP, NFS, SMTP, dan Linux/Windows Post Exploitation sesuai lingkup MVP.
-- Bergantung pada canonical context; playbook adalah data metodologi, bukan komponen React.
-
-## Stage 13 — Dynamic Checklist Engine
-
-- Komposisikan PTES core, confirmed context, dan playbook menjadi SessionCheck snapshot dengan provenance, activation reason/time, lifecycle, semantic deduplication, dan reconciliation historis.
-- Unknown service memakai Generic Service fallback; perubahan playbook global tidak menulis ulang sesi lama.
-- Siapkan jalur menerima AI contextual extension yang tervalidasi dan `suggested`; generation AI-nya baru hadir pada Stage 22 setelah Gemini serta spoiler policy tersedia.
-
-## Stage 14 — Training Session UI Integration
-
-- Hubungkan halaman `/training/[sessionId]` dan daftar sesi ke server read/mutation use cases, generic checklist groups, Phase Gate dialog, progress, Findings, Hypotheses, Attempts, dan Notes.
-- Tambahkan persistence/use case Notes yang belum tersedia; UI menampilkan provenance serta perubahan checklist tanpa full page reload.
-- Bergantung pada session, evidence, context, dan dynamic checklist; hidden knowledge tidak dikirim ke client.
-
-## Stage 15 — Writeup Upload & Parsing
-
-- Implementasi upload server PDF/TXT/Markdown, validasi type/extension/size/empty content, document parsing, text extraction/normalization, dan metadata writeup.
-- Jangan mengeksekusi konten unggahan; hasil normalized text menjadi input Stage 17.
-
-## Stage 16 — Gemini Foundation
-
-- Siapkan client Gemini server-side, model configuration, structured output contract, validasi Zod, error/429 handling, Retry eksplisit, dan batas secret.
-- Existing sessions serta metodologi/playbook tetap berguna saat Gemini gagal.
-
-## Stage 17 — Fact Extraction
-
-- Ekstrak structured machine facts dari normalized writeup: profile, ports/services, vulnerabilities, credentials, dependencies, dan attack path evidence.
-- Validasi Zod serta provenance/source references sebelum menyimpan hidden machine knowledge.
-
-## Stage 18 — Hidden Attack Graph
-
-- Bentuk AttackGraph, AttackNode, AttackEdge, dependency/branching, spoiler level, dan reference path dari facts tervalidasi.
-- Graph tetap server-side; tidak langsung mengaktifkan visible checklist.
-
-## Stage 19 — Graph Verification
-
-- Jalankan Automated Verification terhadap writeup, facts, dan graph: missing steps, unsupported nodes, conflicts, ordering, serta confidence/status.
-- Graph `failed` tidak boleh diam-diam menghasilkan TrainingSession; verification mendahului orchestration Stage 20.
-
-## Stage 20 — Training Generation Orchestration
-
-- Orkestrasi parsing, extraction, graph, verification, hidden knowledge storage, dan session creation menjadi GenerationRun berstatus jelas.
-- Terapkan fingerprint/idempotency, retry, generation history, reuse/cache bila sesuai, serta progress/error/ready state nyata.
-- Bahan UI “Machine Profile”, methodology tasks, hints, dan learning resources disiapkan tanpa membuka solution ke browser.
-
-## Stage 21 — Guidance / Spoiler Engine
-
-- Implementasikan spoiler levels 0–6, context minimization, guidance policy, dan pemilihan hanya hidden graph fragment yang boleh terlihat.
-- Metodologi tetap menentukan state; hint tidak membuat Finding confirmed atau check completed.
-- Menjadi prasyarat AI Mentor dan extension yang spoiler-safe.
-
-## Stage 22 — AI Mentor / Hints
-
-- Sediakan AI Mentor, contextual question, concept explanation, progressive hints, explicit escalation, serta Hint records/counters.
-- AI contextual playbook extension dari confirmed visible context melewati Zod dan spoiler policy; semua AI-generated checks default `suggested` dan tidak memblokir Phase Gate.
-- Tangani kegagalan/rate limit tanpa merusak sesi yang sudah ada.
-
-## Stage 23 — Session Completion
-
-- Sediakan manual completion confirmation, objective evidence, timestamp/state selesai, dan penguncian assessment sesuai aturan produk.
-- Reveal Reference Path hanya setelah completion; sebelum itu path tidak dirender, dipreload, atau dikirim ke browser.
-- Bergantung pada validated hidden graph dan spoiler boundary.
-
-## Stage 24 — Session Review
-
-- Rekonstruksi User Path dari learner records, bandingkan dengan Reference Path setelah completion, hitung deterministic methodology/review metrics, hint/reveal/override counts, dan tampilkan improvement feedback.
-- AI boleh membantu narrative review, bukan membuat angka atau menolak alternative valid path.
-
-## Stage 25 — Knowledge Base
-
-- Buat halaman referensi yang menggunakan Playbook Registry sebagai satu sumber konten runtime dan pembelajaran.
-- Search/category/detail UI tidak menduplikasi definisi playbook secara manual.
-
-## Stage 26 — Methodology Page
-
-- Buat halaman referensi PTES yang merender Framework/FrameworkPhase/FrameworkCheck yang sama dengan Training Engine.
-- Konten reference tidak mengubah SessionCheck historis.
-
-## Stage 27 — Settings
-
-- Sediakan pengaturan framework default, spoiler/hint behavior, Gemini model/status, tampilan/density/reduced motion, serta data/storage actions.
-- API key tetap di environment server; operasi destruktif membutuhkan confirmation.
-
-## Stage 28 — Reliability / Security / Polish
-
-- Perkuat accessibility, responsive behavior, loading/empty/error/retry state, upload/AI failure handling, test penting, performance, security review, secret/hidden-data boundary, dan graceful AI degradation.
-- Quality dan keamanan dasar tetap dijaga sejak Stage awal; tahap ini menguji keseluruhan alur.
-
-## Stage 29 — MVP Acceptance
-
-- Verifikasi end-to-end MVP Success Criteria (bagian 95), Architecture Acceptance Criteria (bagian 96), dan Core Product Rules (bagian 103).
-- Buktikan unknown-service fallback serta penambahan playbook tanpa komponen frontend baru; hidden facts tidak mengaktifkan checklist; AI Suggested tidak memblokir gate; snapshot history stabil; sesi lama tetap berguna saat Gemini gagal; progress/review deterministik; Reference Path baru terbuka setelah completion; session persisten setelah restart.
-
-### Keterlacakan capability yang digabung
-
-| Capability produk | Stage delivery |
-| --- | --- |
-| Generic Service fallback dan Playbook Resolver | 12; aktivasi/snapshot pada 13 |
-| Checklist provenance, lifecycle, reconciliation, spoiler-safe activation | 13; UI pada 14 |
-| Notes use case dan UI | 14 |
-| Writeup parsing serta normalized text | 15 |
-| Structured Gemini output dan Zod | 16; Fact Extraction pada 17 |
-| Hidden Attack Graph dan Automated Verification | 18–19 |
-| GenerationRun, fingerprint, retry, serta generation history | 20 |
-| Guidance policy dan spoiler levels | 21 |
-| AI Contextual Playbook Extension, progressive hints, AI Mentor | 22 |
-| Session Completion dan Reference Path Reveal | 23 |
-| User Path, deterministic metrics, serta Session Review | 24 |
-| Reusable Knowledge Base, Methodology Page, Settings | 25–27 |
-| Accessibility, reliability, security review, dan MVP acceptance | 28–29 |
-
-# 100. Future Features
-
-Possible future additions:
-
-## Additional Methodologies
-
-- OWASP WSTG
-- API Security Testing
-- Active Directory
-- Custom Web Pentest
-- Cloud Security
-
-## Paste Output Intelligence
-
-```text
-Command Output
-→ AI candidate observations
-→ user confirmation
-→ context activation
-```
-
-## Learning Analytics
-
-Example:
-
-"You frequently skip virtual host enumeration."
-
-"You often enter exploitation before documenting the attack surface."
-
-## Skill Tracking
-
-HTTP Enumeration
-80%
-
-Linux Privilege Escalation
-65%
-
-SMB Enumeration
-40%
-
-## Local AI
-
-Possible Ollama support.
-
-## Reporting
-
-Generate structured penetration-test style report from completed session.
-
----
-
-# 101. Product Success Definition
-
-The product is successful when repeated usage causes the user to naturally think:
-
-"What phase am I currently in?"
-
-"What evidence do I have?"
-
-"What have I not enumerated yet?"
-
-"What hypothesis am I testing?"
-
-"What result do I expect?"
-
-"What should I document?"
-
-rather than:
-
-"What tool should I run next?"
-
 ---
-
-# 102. Product Definition
-
-CTF Methodology Trainer is a methodology-driven cybersecurity training companion that converts machine writeups into hidden machine knowledge and uses that knowledge to guide learners through structured penetration-testing workflows without exposing the solution prematurely.
-
-Simplified:
-
-Writeup menjadi jawaban guru.
-
-PTES menjadi framework kerja.
-
-Playbooks menjadi knowledge methodology.
 
-Evidence menentukan context.
+## 13. Manajemen Risiko & Pertimbangan Desain
 
-AI menjadi mentor.
+| Potensi Risiko | Tingkat Dampak | Strategi Penanganan & Mitigasi Produk |
+|---|:---:|---|
+| **AI Membocorkan Solusi (Spoiler Leak)** | Kritis | Model graf serangan dipotong secara kontekstual di server; AI Mentor diinstruksikan dengan aturan ketat untuk menolak memberi kode eksploit sebelum Level 5. |
+| **Halusinasi Ekstraksi Fakta Writeup** | Tinggi | Seluruh output JSON Gemini divalidasi dengan Zod; graf serangan diuji oleh mesin verifikasi otomatis (*solvability & reachability check*) sebelum sesi diizinkan dimulai. |
+| **Ketergantungan Ekstrem pada AI** | Sedang | Aplikasi dirancang dengan prinsip *AI Assists, Methodology Decides*. Seluruh state machine, penilaian progres, dan aktivasi playbook berjalan secara deterministik tanpa memerlukan koneksi AI. |
+| **Kehabisan Kuota Gemini API (Rate Limit 429)** | Sedang | Penanganan error eksplisit; sesi latihan tetap dapat dimainkan menggunakan seluruh playbook built-in; antarmuka menyediakan tombol coba ulang (*Retry*). |
+| **Frustrasi Pengguna Akibat Phase Gate Kaku** | Rendah | Menyediakan mekanisme *Override with Deviation*, di mana pengguna yang sadar diperbolehkan melompati gerbang fase dengan konsekuensi penurunan skor metodologi pada laporan akhir. |
 
-User tetap melakukan penetration testing sendiri.
-
 ---
-
-# 103. Core Product Rules
-
-METHOD BEFORE EXPLOIT
-
-EVIDENCE BEFORE ACTION
-
-ENUMERATION BEFORE ASSUMPTION
-
-HYPOTHESIS BEFORE RANDOM TESTING
-
-GUIDANCE WITHOUT SPOILERS
-
-VISIBLE CONTEXT COMES FROM USER EVIDENCE
-
-AI ASSISTS, METHODOLOGY DECIDES
 
-FRONTEND RENDERS DATA, NOT MACHINE LOGIC
+*Dokumen ini merupakan spesifikasi resmi kebutuhan produk CTF Methodology Trainer. Dokumen ini mendefinisikan APA yang dibangun dan MENGAPA sistem dirancang demikian. Segala ketentuan implementasi teknis, DDL database, dan kontrak kode diatur secara independen di dalam [`TECHNICAL_SPEC.md`](TECHNICAL_SPEC.md).*

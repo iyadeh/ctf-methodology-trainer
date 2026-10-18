@@ -269,7 +269,7 @@ export async function setTrainingSessionTargetIp(
 async function changeSessionCheck(
   sessionId: string,
   checkId: string,
-  action: "complete" | "skip",
+  action: "complete" | "skip" | "reset",
 ): Promise<SessionCheckRecord> {
   return repository.trainingTransaction(async (transaction) => {
     const session = await repository.lockTrainingSession(transaction, sessionId);
@@ -282,6 +282,22 @@ async function changeSessionCheck(
     }
 
     const check = await repository.loadSessionCheck(transaction, sessionId, checkId);
+
+    if (action === "reset") {
+      if (check.status === "active") return check;
+      if (check.status !== "completed" && check.status !== "skipped") {
+        throw new TrainingSessionError(
+          "invalid_transition",
+          `Cannot reset a ${check.status} Session Check.`,
+        );
+      }
+      return repository.updateSessionCheck(transaction, checkId, {
+        status: "active",
+        completedAt: null,
+        skippedAt: null,
+      });
+    }
+
     const nextStatus = action === "complete" ? "completed" : "skipped";
 
     if (check.status === nextStatus) return check;
@@ -308,6 +324,10 @@ export function completeSessionCheck(sessionId: string, checkId: string) {
 
 export function skipSessionCheck(sessionId: string, checkId: string) {
   return changeSessionCheck(sessionId, checkId, "skip");
+}
+
+export function resetSessionCheck(sessionId: string, checkId: string) {
+  return changeSessionCheck(sessionId, checkId, "reset");
 }
 
 export async function advanceTrainingSessionPhase(

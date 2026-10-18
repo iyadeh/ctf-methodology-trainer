@@ -34,8 +34,8 @@ const normalizationRules: readonly NormalizationRule[] = [
   { kind: "technology", aliases: ["wordpress", "wp"], keys: ["technology:wordpress"] },
   { kind: "technology", aliases: ["drupal"], keys: ["technology:drupal"] },
   { kind: "technology", aliases: ["joomla"], keys: ["technology:joomla"] },
-  { kind: "access", aliases: ["local-shell", "local shell"], keys: ["access:local-shell"] },
-  { kind: "access", aliases: ["remote-shell", "remote shell"], keys: ["access:remote-shell"] },
+  { kind: "access", aliases: ["local-shell", "local shell", "shell", "bash", "sh", "terminal", "tty"], keys: ["access:local-shell"] },
+  { kind: "access", aliases: ["remote-shell", "remote shell", "reverse-shell", "reverse shell", "netcat shell"], keys: ["access:local-shell", "access:remote-shell"] },
 ];
 
 export function normalizeContext(kind: ContextKind, value: string): string[] {

@@ -1,8 +1,9 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, ne } from "drizzle-orm";
 import { db } from "../../lib/db";
 import { loadSessionContext } from "../context/repository";
 import {
   attempts,
+  contextObservations,
   findings,
   frameworkChecks,
   frameworkPhases,
@@ -14,6 +15,7 @@ import {
   methodologyDeviations,
   notes,
   sessionChecks,
+  sessionContexts,
   sessionPhases,
   trainingSessions,
 } from "../../lib/db/schema";
@@ -404,13 +406,15 @@ export async function resetTrainingSessionRecord(sessionId: string): Promise<voi
       })
       .where(eq(trainingSessions.id, sessionId));
 
-    // 2. Clear findings, hypotheses, attempts, notes, deviations, and hints
+    // 2. Clear findings, hypotheses, attempts, notes, deviations, hints, and context
     await transaction.delete(findings).where(eq(findings.trainingSessionId, sessionId));
     await transaction.delete(hypotheses).where(eq(hypotheses.trainingSessionId, sessionId));
     await transaction.delete(attempts).where(eq(attempts.trainingSessionId, sessionId));
     await transaction.delete(notes).where(eq(notes.trainingSessionId, sessionId));
     await transaction.delete(methodologyDeviations).where(eq(methodologyDeviations.trainingSessionId, sessionId));
     await transaction.delete(hintRecords).where(eq(hintRecords.trainingSessionId, sessionId));
+    await transaction.delete(contextObservations).where(eq(contextObservations.trainingSessionId, sessionId));
+    await transaction.delete(sessionContexts).where(eq(sessionContexts.trainingSessionId, sessionId));
 
     // 3. Reset session phases: All phases locked (ready for startTrainingSession)
     const phases = await loadSessionPhases(transaction, sessionId);
@@ -418,24 +422,27 @@ export async function resetTrainingSessionRecord(sessionId: string): Promise<voi
       await updateSessionPhase(transaction, p.id, "locked");
     }
 
-    // 4. Reset checks: All checks inactive, timestamps cleared
-    const checks = await transaction
-      .select()
-      .from(sessionChecks)
-      .where(eq(sessionChecks.trainingSessionId, sessionId));
+    // 4. Delete non-core checks (dynamic playbook and suggested checks from previous runs)
+    await transaction
+      .delete(sessionChecks)
+      .where(
+        and(
+          eq(sessionChecks.trainingSessionId, sessionId),
+          ne(sessionChecks.provenance, "core"),
+        ),
+      );
 
-    for (const check of checks) {
-      await transaction
-        .update(sessionChecks)
-        .set({
-          status: "inactive",
-          completedAt: null,
-          activatedAt: null,
-          skippedAt: null,
-          updatedAt: new Date(),
-        })
-        .where(eq(sessionChecks.id, check.id));
-    }
+    // 5. Reset remaining core checks: All checks inactive, timestamps cleared
+    await transaction
+      .update(sessionChecks)
+      .set({
+        status: "inactive",
+        completedAt: null,
+        activatedAt: null,
+        skippedAt: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(sessionChecks.trainingSessionId, sessionId));
   });
 }
 

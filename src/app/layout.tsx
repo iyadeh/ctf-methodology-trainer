@@ -57,7 +57,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           }}
         />
       </head>
-      <body className="min-h-dvh bg-background text-foreground">
+      <body className="min-h-dvh bg-background text-foreground font-sans">
         <AppShell>{children}</AppShell>
       </body>
     </html>
