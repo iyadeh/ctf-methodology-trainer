@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   ChevronRight,
   CornerDownRight,
+  HelpCircle,
   Lock,
   RotateCcw,
   SkipForward,
@@ -23,6 +24,7 @@ import {
   skipCheckAction,
   resetCheckAction,
 } from "@/app/training/[sessionId]/actions";
+import { CheckExplanationDialog } from "./check-explanation-dialog";
 
 interface ChecklistSectionProps {
   readonly sessionId: string;
@@ -116,6 +118,8 @@ export function ChecklistSection({
   const [overrideReason, setOverrideReason] = useState("");
   const [showOverrideInput, setShowOverrideInput] = useState(false);
   const [advanceError, setAdvanceError] = useState<string | null>(null);
+  const [selectedExplanationCheck, setSelectedExplanationCheck] =
+    useState<SessionCheckRecord | null>(null);
 
   const displayPhase = viewedPhase ?? currentPhase;
 
@@ -353,6 +357,15 @@ export function ChecklistSection({
                               Skipped
                             </Badge>
                           )}
+                          <button
+                            type="button"
+                            onClick={() => setSelectedExplanationCheck(check)}
+                            className="inline-flex h-4 w-4 items-center justify-center rounded text-muted-foreground/60 hover:text-primary hover:bg-primary/10 transition-colors focus:outline-none focus:ring-1 focus:ring-primary"
+                            title="Explain methodology principle, evidence context & commands"
+                            aria-label={`Explain ${check.title}`}
+                          >
+                            <HelpCircle className="h-3.5 w-3.5" />
+                          </button>
                         </div>
 
                         {check.description && (
@@ -366,8 +379,20 @@ export function ChecklistSection({
                       </div>
                     </div>
 
-                    {!isCompleted && !isCheckCompleted && !isSuperseded && !isSkipped && (
-                      <div className="flex shrink-0 items-center gap-1.5 self-end sm:self-start">
+                    <div className="flex shrink-0 items-center gap-1.5 self-end sm:self-start">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedExplanationCheck(check)}
+                        className="h-6 px-2 text-[11px] text-muted-foreground hover:text-primary gap-1"
+                        title="Why, What, How: Methodology principle, evidence context, and terminal commands"
+                      >
+                        <HelpCircle className="h-3 w-3" />
+                        <span>Explain</span>
+                      </Button>
+
+                      {!isCompleted && !isCheckCompleted && !isSuperseded && !isSkipped && (
                         <Button
                           type="button"
                           variant="ghost"
@@ -380,11 +405,9 @@ export function ChecklistSection({
                           <SkipForward className="mr-1 h-3 w-3" />
                           Skip
                         </Button>
-                      </div>
-                    )}
+                      )}
 
-                    {!isCompleted && isSkipped && !isSuperseded && (
-                      <div className="flex shrink-0 items-center gap-1.5 self-end sm:self-start">
+                      {!isCompleted && isSkipped && !isSuperseded && (
                         <Button
                           type="button"
                           variant="ghost"
@@ -397,8 +420,8 @@ export function ChecklistSection({
                           <RotateCcw className="mr-1 h-3 w-3" />
                           Undo Skip
                         </Button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -551,6 +574,14 @@ export function ChecklistSection({
           </div>
         </div>
       )}
+
+      {/* 3-Layer Explanation Card Dialog */}
+      <CheckExplanationDialog
+        sessionId={sessionId}
+        check={selectedExplanationCheck}
+        isOpen={Boolean(selectedExplanationCheck)}
+        onClose={() => setSelectedExplanationCheck(null)}
+      />
     </div>
   );
 }

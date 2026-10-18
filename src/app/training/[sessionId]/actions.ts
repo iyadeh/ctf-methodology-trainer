@@ -336,3 +336,20 @@ export async function renameSessionAction(sessionId: string, newName: string) {
   }
 }
 
+export async function getCheckExplanationAction(
+  sessionId: string,
+  checkId: string,
+) {
+  try {
+    const { getCheckExplanation } = await import("@/modules/checklist/explanation");
+    const result = await getCheckExplanation(sessionId, checkId);
+    return { ok: true as const, data: result };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error: error instanceof Error ? error.message : "Failed to load explanation",
+    };
+  }
+}
+
+
