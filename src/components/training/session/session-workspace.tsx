@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import type { TrainingSessionAggregate } from "@/modules/training/types";
 import type { HintMetrics, HintRecord } from "@/modules/mentor/types";
 import type { RevealedReferencePath } from "@/modules/training/completion";
+import type { HypothesisInitialTarget } from "./hypotheses-panel";
 import { SessionHeader } from "./session-header";
 import { PhaseStepper } from "./phase-stepper";
 import { ChecklistSection } from "./checklist-section";
@@ -45,11 +46,21 @@ export function SessionWorkspace({
   const [selectedPhaseKey, setSelectedPhaseKey] = useState<string | null>(null);
   const [mentorPrefilledQuery, setMentorPrefilledQuery] = useState<string | null>(null);
   const [mentorFocusTitle, setMentorFocusTitle] = useState<string | null>(null);
+  const [hypothesisInitialTarget, setHypothesisInitialTarget] = useState<HypothesisInitialTarget | null>(null);
 
   const handleConsultMentor = (query: string, focusTitle?: string) => {
     setMentorPrefilledQuery(query);
     setMentorFocusTitle(focusTitle ?? null);
     setActiveTab("mentor");
+  };
+
+  const handleFormulateHypothesis = (findingId: string, findingTitle?: string) => {
+    setHypothesisInitialTarget({
+      findingId,
+      findingTitle,
+      timestamp: Date.now(),
+    });
+    setActiveTab("hypotheses");
   };
 
   const { session, phases, currentPhase, findings, hypotheses, attempts, notes, context } =
@@ -108,7 +119,12 @@ export function SessionWorkspace({
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  if (tab.id !== "hypotheses") {
+                    setHypothesisInitialTarget(null);
+                  }
+                  setActiveTab(tab.id);
+                }}
                 className={cn(
                   "flex items-center gap-2 border-b-2 py-3 px-3 text-xs font-medium transition-colors",
                   isActive
@@ -153,6 +169,7 @@ export function SessionWorkspace({
             sessionId={session.id}
             findings={findings}
             isCompleted={isCompleted}
+            onFormulateHypothesis={handleFormulateHypothesis}
           />
         )}
         {activeTab === "hypotheses" && (
@@ -163,6 +180,7 @@ export function SessionWorkspace({
             findings={findings}
             isCompleted={isCompleted}
             onConsultMentor={handleConsultMentor}
+            initialTarget={hypothesisInitialTarget}
           />
         )}
         {activeTab === "notes" && (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Lock, Pencil, Plus, ShieldCheck, Tag, X } from "lucide-react";
+import { Lightbulb, Lock, Pencil, Plus, ShieldCheck, Sparkles, Tag, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,16 +22,33 @@ type ContextKind = (typeof findingContextKindEnum.enumValues)[number];
 type ContextKindOption = ContextKind | "none";
 type ImportanceLevel = (typeof findingImportanceEnum.enumValues)[number];
 
+const CONTEXT_CHIPS = [
+  { label: "HTTP", kind: "service", value: "http" },
+  { label: "SSH", kind: "service", value: "ssh" },
+  { label: "SMB", kind: "service", value: "smb" },
+  { label: "FTP", kind: "service", value: "ftp" },
+  { label: "DNS", kind: "service", value: "dns" },
+  { label: "MySQL", kind: "service", value: "mysql" },
+  { label: "local-shell", kind: "access", value: "local-shell" },
+  { label: "root-shell", kind: "access", value: "root-shell" },
+  { label: "Linux", kind: "os", value: "linux" },
+  { label: "Windows", kind: "os", value: "windows" },
+  { label: "web", kind: "surface", value: "web" },
+  { label: "auth", kind: "surface", value: "auth" },
+] as const;
+
 interface FindingsPanelProps {
   readonly sessionId: string;
   readonly findings: readonly FindingRecord[];
   readonly isCompleted?: boolean;
+  readonly onFormulateHypothesis?: (findingId: string, findingTitle: string) => void;
 }
 
 export function FindingsPanel({
   sessionId,
   findings,
   isCompleted = false,
+  onFormulateHypothesis,
 }: FindingsPanelProps) {
   const [isPending, startTransition] = useTransition();
   const [showAddForm, setShowAddForm] = useState(false);
@@ -276,6 +293,40 @@ export function FindingsPanel({
                 </div>
               </div>
 
+              {/* Smart Chips Context */}
+              <div className="space-y-1.5 pt-0.5">
+                <span className="text-[10px] uppercase font-mono text-muted-foreground tracking-wider flex items-center gap-1.5">
+                  <Sparkles className="h-3 w-3 text-primary" />
+                  <span>Smart Context Chips (1-Click Fill):</span>
+                </span>
+                <div className="flex flex-wrap gap-1">
+                  {CONTEXT_CHIPS.map((chip) => {
+                    const isSelected =
+                      contextKind === chip.kind &&
+                      contextValue.toLowerCase() === chip.value.toLowerCase();
+                    return (
+                      <button
+                        key={`${chip.kind}-${chip.value}`}
+                        type="button"
+                        onClick={() => {
+                          setContextKind(chip.kind);
+                          setContextValue(chip.value);
+                          if (!category) setCategory(chip.kind);
+                        }}
+                        className={cn(
+                          "rounded px-2 py-0.5 text-[11px] font-mono border transition-colors",
+                          isSelected
+                            ? "border-primary bg-primary/20 text-primary font-semibold"
+                            : "border-border bg-background/60 text-muted-foreground hover:bg-card hover:text-foreground",
+                        )}
+                      >
+                        {chip.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-medium text-foreground">
                   Evidence State
@@ -467,6 +518,40 @@ export function FindingsPanel({
                         </div>
                       </div>
 
+                      {/* Smart Chips Context */}
+                      <div className="space-y-1.5 pt-0.5">
+                        <span className="text-[10px] uppercase font-mono text-muted-foreground tracking-wider flex items-center gap-1.5">
+                          <Sparkles className="h-3 w-3 text-primary" />
+                          <span>Smart Context Chips:</span>
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {CONTEXT_CHIPS.map((chip) => {
+                            const isSelected =
+                              editContextKind === chip.kind &&
+                              editContextValue.toLowerCase() === chip.value.toLowerCase();
+                            return (
+                              <button
+                                key={`edit-${chip.kind}-${chip.value}`}
+                                type="button"
+                                onClick={() => {
+                                  setEditContextKind(chip.kind);
+                                  setEditContextValue(chip.value);
+                                  if (!editCategory) setEditCategory(chip.kind);
+                                }}
+                                className={cn(
+                                  "rounded px-2 py-0.5 text-[11px] font-mono border transition-colors",
+                                  isSelected
+                                    ? "border-primary bg-primary/20 text-primary font-semibold"
+                                    : "border-border bg-background/60 text-muted-foreground hover:bg-card hover:text-foreground",
+                                )}
+                              >
+                                {chip.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
                       <div>
                         <label className="block text-xs font-medium text-foreground">
                           Evidence State
@@ -588,6 +673,19 @@ export function FindingsPanel({
                     </div>
 
                     <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-start">
+                      {!isCompleted && onFormulateHypothesis && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => onFormulateHypothesis(finding.id, finding.title)}
+                          className="gap-1.5 text-xs border-border/80 bg-background/50 text-foreground hover:border-primary/60 hover:text-primary transition-colors"
+                          title="Formulate attack hypothesis based on this finding"
+                        >
+                          <Lightbulb className="h-3.5 w-3.5 text-primary" />
+                          <span>+ Formulate Hypothesis</span>
+                        </Button>
+                      )}
                       {!isCompleted && (
                         <Button
                           type="button"

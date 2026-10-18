@@ -14,6 +14,7 @@ import {
   skipSessionCheck,
   resetSessionCheck,
   startTrainingSession,
+  getTrainingSession,
   type CompleteSessionInput,
 } from "@/modules/training/service";
 import {
@@ -351,5 +352,51 @@ export async function getCheckExplanationAction(
     };
   }
 }
+
+export async function autoDraftHypothesisAction(
+  sessionId: string,
+  input: {
+    hypothesis: string;
+    findingId?: string | null;
+  },
+) {
+  try {
+    const { generateHypothesisDraft } = await import("@/modules/training/hypothesis-draft");
+    let findingTitle: string | null = null;
+    let findingCategory: string | null = null;
+    let findingEvidence: string | null = null;
+    let contextKind: string | null = null;
+    let contextValue: string | null = null;
+
+    if (input.findingId) {
+      const session = await getTrainingSession(sessionId);
+      const finding = session.findings.find((f) => f.id === input.findingId);
+      if (finding) {
+        findingTitle = finding.title;
+        findingCategory = finding.category;
+        findingEvidence = finding.evidence;
+        contextKind = finding.contextKind;
+        contextValue = finding.contextValue;
+      }
+    }
+
+    const draft = await generateHypothesisDraft({
+      hypothesis: input.hypothesis,
+      findingTitle,
+      findingCategory,
+      findingEvidence,
+      contextKind,
+      contextValue,
+    });
+
+    return { ok: true as const, data: draft };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error: error instanceof Error ? error.message : "Failed to auto-draft hypothesis",
+    };
+  }
+}
+
 
 

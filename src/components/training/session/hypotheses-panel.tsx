@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Compass, Lightbulb, Lock, Pencil, Plus, Shield, X } from "lucide-react";
+import { Compass, Lightbulb, Loader2, Lock, Pencil, Plus, Shield, Sparkles, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AttemptRecord, FindingRecord, HypothesisRecord } from "@/modules/training/types";
 import { attemptOutcomeEnum, hypothesisOutcomeEnum } from "@/lib/db/schema";
 import {
+  autoDraftHypothesisAction,
   createAttemptAction,
   createHypothesisAction,
   updateHypothesisAction,
@@ -16,6 +17,12 @@ import {
 type AttemptOutcome = (typeof attemptOutcomeEnum.enumValues)[number];
 type HypothesisOutcome = (typeof hypothesisOutcomeEnum.enumValues)[number];
 
+export interface HypothesisInitialTarget {
+  findingId: string;
+  findingTitle?: string;
+  timestamp: number;
+}
+
 interface HypothesesPanelProps {
   readonly sessionId: string;
   readonly hypotheses: readonly HypothesisRecord[];
@@ -23,6 +30,7 @@ interface HypothesesPanelProps {
   readonly findings: readonly FindingRecord[];
   readonly isCompleted?: boolean;
   readonly onConsultMentor?: (query: string, focusTitle?: string) => void;
+  readonly initialTarget?: HypothesisInitialTarget | null;
 }
 
 export function HypothesesPanel({
@@ -32,19 +40,77 @@ export function HypothesesPanel({
   findings,
   isCompleted = false,
   onConsultMentor,
+  initialTarget,
 }: HypothesesPanelProps) {
   const [isPending, startTransition] = useTransition();
-  const [showAddHypothesis, setShowAddHypothesis] = useState(false);
+
+  const initialFinding = initialTarget
+    ? findings.find((f) => f.id === initialTarget.findingId)
+    : undefined;
+  const initialTitle = initialTarget?.findingTitle ?? initialFinding?.title;
+
+  const [showAddHypothesis, setShowAddHypothesis] = useState(() => Boolean(initialTarget));
   const [activeAttemptHypothesisId, setActiveAttemptHypothesisId] = useState<string | null>(null);
   const [editingHypothesis, setEditingHypothesis] = useState<HypothesisRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isAutoDrafting, setIsAutoDrafting] = useState(false);
+  const [autoDraftNotice, setAutoDraftNotice] = useState<string | null>(null);
 
   // Hypothesis form
-  const [basedOnFindingId, setBasedOnFindingId] = useState<string>("");
-  const [hypothesisText, setHypothesisText] = useState("");
+  const [basedOnFindingId, setBasedOnFindingId] = useState<string>(() => initialTarget?.findingId ?? "");
+  const [hypothesisText, setHypothesisText] = useState(() =>
+    initialTitle ? `Exploit vector via ${initialTitle}` : "",
+  );
   const [reasoning, setReasoning] = useState("");
   const [expectedResult, setExpectedResult] = useState("");
   const [testApproach, setTestApproach] = useState("");
+
+  const [prevTargetTimestamp, setPrevTargetTimestamp] = useState<number | null>(
+    () => initialTarget?.timestamp ?? null,
+  );
+
+  if (initialTarget && initialTarget.timestamp !== prevTargetTimestamp) {
+    setPrevTargetTimestamp(initialTarget.timestamp);
+    setBasedOnFindingId(initialTarget.findingId);
+    setShowAddHypothesis(true);
+    setEditingHypothesis(null);
+    setActiveAttemptHypothesisId(null);
+    const title =
+      initialTarget.findingTitle ??
+      findings.find((f) => f.id === initialTarget.findingId)?.title;
+    if (title) {
+      setHypothesisText(`Exploit vector via ${title}`);
+    }
+  }
+
+  const handleAutoDraft = () => {
+    if (!hypothesisText.trim()) return;
+    setError(null);
+    setAutoDraftNotice(null);
+    setIsAutoDrafting(true);
+
+    startTransition(async () => {
+      try {
+        const res = await autoDraftHypothesisAction(sessionId, {
+          hypothesis: hypothesisText.trim(),
+          findingId: basedOnFindingId || null,
+        });
+
+        if (!res.ok || !res.data) {
+          setError(res.error || "Failed to auto-draft hypothesis details");
+        } else {
+          setReasoning(res.data.reasoning);
+          setExpectedResult(res.data.expectedResult);
+          setTestApproach(res.data.testApproach);
+          setAutoDraftNotice(
+            "✨ AI auto-drafted reasoning, expected result, and test approach. Review and adjust before saving.",
+          );
+        }
+      } finally {
+        setIsAutoDrafting(false);
+      }
+    });
+  };
 
   // Edit Hypothesis form
   const [editBasedOnFindingId, setEditBasedOnFindingId] = useState<string>("");
@@ -113,11 +179,13 @@ export function HypothesesPanel({
       if (!res.ok) {
         setError(res.error);
       } else {
+        setBasedOnFindingId("");
         setHypothesisText("");
         setReasoning("");
         setExpectedResult("");
         setTestApproach("");
         setShowAddHypothesis(false);
+        setAutoDraftNotice(null);
       }
     });
   };
@@ -212,9 +280,27 @@ export function HypothesesPanel({
               )}
 
               <div>
-                <label htmlFor="h-hyp" className="block text-xs font-medium text-foreground">
-                  Hypothesis Statement *
-                </label>
+                <div className="flex items-center justify-between">
+                  <label htmlFor="h-hyp" className="block text-xs font-medium text-foreground">
+                    Hypothesis Statement *
+                  </label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={isPending || isAutoDrafting || !hypothesisText.trim()}
+                    onClick={handleAutoDraft}
+                    className="h-6 px-2 text-[11px] text-primary hover:text-primary hover:bg-primary/10 gap-1.5"
+                    title="Auto-draft Reasoning, Expected Result, and Test Approach based on your hypothesis statement"
+                  >
+                    {isAutoDrafting ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3 w-3" />
+                    )}
+                    <span>Auto-Draft with AI</span>
+                  </Button>
+                </div>
                 <input
                   id="h-hyp"
                   type="text"
@@ -225,6 +311,13 @@ export function HypothesesPanel({
                   className="mt-1 w-full rounded border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 />
               </div>
+
+              {autoDraftNotice && (
+                <div className="flex items-center gap-2 rounded bg-primary/10 p-2.5 text-xs text-primary border border-primary/20">
+                  <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                  <span>{autoDraftNotice}</span>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div>
