@@ -22,6 +22,8 @@ import {
   createAttempt,
   createFinding,
   createHypothesis,
+  deleteFinding,
+  deleteHypothesis,
   updateFinding,
   updateHypothesis,
   type CreateAttemptInput,
@@ -199,6 +201,22 @@ export async function confirmFindingAction(
   }
 }
 
+export async function deleteFindingAction(
+  sessionId: string,
+  findingId: string,
+) {
+  try {
+    await deleteFinding(sessionId, findingId);
+    revalidatePath(`/training/${sessionId}`);
+    return { ok: true as const };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error: error instanceof Error ? error.message : "Failed to delete finding",
+    };
+  }
+}
+
 export async function createHypothesisAction(
   sessionId: string,
   input: CreateHypothesisInput,
@@ -228,6 +246,22 @@ export async function updateHypothesisAction(
     return {
       ok: false as const,
       error: error instanceof Error ? error.message : "Failed to update hypothesis",
+    };
+  }
+}
+
+export async function deleteHypothesisAction(
+  sessionId: string,
+  hypothesisId: string,
+) {
+  try {
+    await deleteHypothesis(sessionId, hypothesisId);
+    revalidatePath(`/training/${sessionId}`);
+    return { ok: true as const };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error: error instanceof Error ? error.message : "Failed to delete hypothesis",
     };
   }
 }

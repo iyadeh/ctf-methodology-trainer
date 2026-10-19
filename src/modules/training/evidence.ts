@@ -1,5 +1,6 @@
 import * as evidenceRepository from "./evidence-repository";
 import { reconcileFindingContextInTransaction } from "../context/service";
+import { reconcileContextObservations } from "../context/repository";
 import { reconcileSessionChecklistInTransaction } from "../checklist/service";
 import {
   createAttemptSchema,
@@ -85,6 +86,19 @@ export async function confirmFinding(sessionId: string, findingId: string) {
   });
 }
 
+export async function deleteFinding(sessionId: string, findingId: string) {
+  const id = parseEvidenceId(sessionId);
+  const ownedFindingId = parseEvidenceId(findingId);
+  return trainingTransaction(async (transaction) => {
+    await lockTrainingSession(transaction, id);
+    const finding = await evidenceRepository.lockFinding(transaction, id, ownedFindingId);
+    await reconcileContextObservations(transaction, finding, []);
+    const deleted = await evidenceRepository.deleteFindingRecord(transaction, id, ownedFindingId);
+    await reconcileSessionChecklistInTransaction(transaction, id);
+    return deleted;
+  });
+}
+
 export async function getFinding(sessionId: string, findingId: string) {
   return evidenceRepository.getFindingRecord(
     parseEvidenceId(sessionId),
@@ -134,6 +148,16 @@ export async function updateHypothesis(
       ownedHypothesisId,
       changes,
     );
+  });
+}
+
+export async function deleteHypothesis(sessionId: string, hypothesisId: string) {
+  const id = parseEvidenceId(sessionId);
+  const ownedHypothesisId = parseEvidenceId(hypothesisId);
+  return trainingTransaction(async (transaction) => {
+    await lockTrainingSession(transaction, id);
+    await evidenceRepository.lockHypothesis(transaction, id, ownedHypothesisId);
+    return evidenceRepository.deleteHypothesisRecord(transaction, id, ownedHypothesisId);
   });
 }
 

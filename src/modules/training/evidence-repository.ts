@@ -216,3 +216,27 @@ export async function updateAttemptRecord(
     .returning();
   return attempt;
 }
+
+export async function deleteFindingRecord(
+  transaction: TrainingTransaction,
+  sessionId: string,
+  findingId: string,
+) {
+  const [deleted] = await transaction
+    .delete(findings)
+    .where(and(eq(findings.trainingSessionId, sessionId), eq(findings.id, findingId)))
+    .returning();
+  return deleted;
+}
+
+export async function deleteHypothesisRecord(
+  transaction: TrainingTransaction,
+  sessionId: string,
+  hypothesisId: string,
+) {
+  const [deleted] = await transaction
+    .delete(hypotheses)
+    .where(and(eq(hypotheses.trainingSessionId, sessionId), eq(hypotheses.id, hypothesisId)))
+    .returning();
+  return deleted;
+}

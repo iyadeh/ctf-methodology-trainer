@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Lightbulb, Lock, Pencil, Plus, ShieldCheck, Sparkles, Tag, X } from "lucide-react";
+import { Lightbulb, Lock, Pencil, Plus, ShieldCheck, Sparkles, Tag, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { cn } from "@/lib/utils";
 import type { FindingRecord } from "@/modules/training/types";
 import {
@@ -14,6 +15,7 @@ import {
 import {
   confirmFindingAction,
   createFindingAction,
+  deleteFindingAction,
   updateFindingAction,
 } from "@/app/training/[sessionId]/actions";
 import { normalizeContext } from "@/modules/context/engine";
@@ -53,6 +55,7 @@ export function FindingsPanel({
   const [isPending, startTransition] = useTransition();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingFinding, setEditingFinding] = useState<FindingRecord | null>(null);
+  const [findingToDelete, setFindingToDelete] = useState<FindingRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Add Form states
@@ -149,6 +152,20 @@ export function FindingsPanel({
     });
   };
 
+  const handleConfirmDeleteFinding = () => {
+    if (!findingToDelete) return;
+    const findingId = findingToDelete.id;
+    setError(null);
+    startTransition(async () => {
+      const res = await deleteFindingAction(sessionId, findingId);
+      if (!res.ok) {
+        setError(res.error);
+      } else {
+        setFindingToDelete(null);
+      }
+    });
+  };
+
   return (
     <div className="space-y-6 p-4 sm:p-6">
       {isCompleted && (
@@ -157,6 +174,21 @@ export function FindingsPanel({
           <span>
             Training session is completed. Findings are locked in read-only mode.
           </span>
+        </div>
+      )}
+
+      {error && !showAddForm && !editingFinding && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive flex items-center justify-between">
+          <span>{error}</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setError(null)}
+            className="h-5 w-5 p-0 text-destructive hover:text-destructive"
+          >
+            <X className="h-3 w-3" />
+          </Button>
         </div>
       )}
 
@@ -698,6 +730,20 @@ export function FindingsPanel({
                           Edit
                         </Button>
                       )}
+                      {!isCompleted && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          disabled={isPending}
+                          onClick={() => setFindingToDelete(finding)}
+                          className="gap-1 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          title="Delete finding"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          Delete
+                        </Button>
+                      )}
                       {!isConfirmed && !isCompleted && (
                         <Button
                           type="button"
@@ -719,6 +765,17 @@ export function FindingsPanel({
           })}
         </div>
       )}
+
+      <ConfirmationDialog
+        isOpen={Boolean(findingToDelete)}
+        title={findingToDelete ? `Delete Finding: "${findingToDelete.title}"?` : "Delete Finding?"}
+        description="Any methodology playbook activated solely by this finding will be superseded, and linked hypotheses will have their finding reference cleared. Are you sure you want to delete this finding?"
+        confirmLabel="Delete Finding"
+        isDestructive
+        isLoading={isPending}
+        onConfirm={handleConfirmDeleteFinding}
+        onCancel={() => setFindingToDelete(null)}
+      />
     </div>
   );
 }

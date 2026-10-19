@@ -1,16 +1,18 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Compass, Lightbulb, Loader2, Lock, Pencil, Plus, Shield, Sparkles, X } from "lucide-react";
+import { Compass, Lightbulb, Loader2, Lock, Pencil, Plus, Shield, Sparkles, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import type { AttemptRecord, FindingRecord, HypothesisRecord } from "@/modules/training/types";
 import { attemptOutcomeEnum, hypothesisOutcomeEnum } from "@/lib/db/schema";
 import {
   autoDraftHypothesisAction,
   createAttemptAction,
   createHypothesisAction,
+  deleteHypothesisAction,
   updateHypothesisAction,
 } from "@/app/training/[sessionId]/actions";
 
@@ -52,6 +54,7 @@ export function HypothesesPanel({
   const [showAddHypothesis, setShowAddHypothesis] = useState(() => Boolean(initialTarget));
   const [activeAttemptHypothesisId, setActiveAttemptHypothesisId] = useState<string | null>(null);
   const [editingHypothesis, setEditingHypothesis] = useState<HypothesisRecord | null>(null);
+  const [hypothesisToDelete, setHypothesisToDelete] = useState<HypothesisRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isAutoDrafting, setIsAutoDrafting] = useState(false);
   const [autoDraftNotice, setAutoDraftNotice] = useState<string | null>(null);
@@ -213,6 +216,20 @@ export function HypothesesPanel({
     });
   };
 
+  const handleConfirmDeleteHypothesis = () => {
+    if (!hypothesisToDelete) return;
+    const hypothesisId = hypothesisToDelete.id;
+    setError(null);
+    startTransition(async () => {
+      const res = await deleteHypothesisAction(sessionId, hypothesisId);
+      if (!res.ok) {
+        setError(res.error);
+      } else {
+        setHypothesisToDelete(null);
+      }
+    });
+  };
+
   return (
     <div className="space-y-6 p-4 sm:p-6">
       {isCompleted && (
@@ -221,6 +238,21 @@ export function HypothesesPanel({
           <span>
             Training session is completed. Hypotheses and verification attempts are locked in read-only mode.
           </span>
+        </div>
+      )}
+
+      {error && !showAddHypothesis && !editingHypothesis && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive flex items-center justify-between">
+          <span>{error}</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setError(null)}
+            className="h-5 w-5 p-0 text-destructive hover:text-destructive"
+          >
+            <X className="h-3 w-3" />
+          </Button>
         </div>
       )}
 
@@ -614,6 +646,18 @@ export function HypothesesPanel({
                         <Button
                           type="button"
                           size="sm"
+                          variant="ghost"
+                          disabled={isPending}
+                          onClick={() => setHypothesisToDelete(hypothesis)}
+                          className="gap-1 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          title="Delete hypothesis"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          Delete
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
                           variant="outline"
                           onClick={() =>
                             setActiveAttemptHypothesisId(isRecordingAttempt ? null : hypothesis.id)
@@ -775,6 +819,21 @@ export function HypothesesPanel({
           })}
         </div>
       )}
+
+      <ConfirmationDialog
+        isOpen={Boolean(hypothesisToDelete)}
+        title={
+          hypothesisToDelete
+            ? `Delete Hypothesis: "${hypothesisToDelete.hypothesis}"?`
+            : "Delete Hypothesis?"
+        }
+        description="Are you sure you want to delete this hypothesis? Any recorded verification attempts linked to it will be safely preserved."
+        confirmLabel="Delete Hypothesis"
+        isDestructive
+        isLoading={isPending}
+        onConfirm={handleConfirmDeleteHypothesis}
+        onCancel={() => setHypothesisToDelete(null)}
+      />
     </div>
   );
 }

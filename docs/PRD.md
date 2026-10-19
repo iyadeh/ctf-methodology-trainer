@@ -189,6 +189,9 @@ CTF Methodology Trainer menghadirkan ekosistem latihan yang bertindak layaknya *
 | **US-11** | Pengguna | Melihat komparasi *User Path* vs *Reference Path* | Saya mengetahui efisiensi rute saya dibandingkan rute pembuat mesin. | **P0 (Must)** |
 | **US-12** | Pengguna | Membaca referensi metodologi dan *Knowledge Base* | Saya dapat belajar teori pengujian berbagai protokol secara mandiri. | **P1 (Should)** |
 | **US-13** | Pengguna | Mengonfigurasi Gemini API Key dan display density | Aplikasi sesuai dengan preferensi visual dan kuota AI saya. | **P1 (Should)** |
+| **US-14** | Pengguna | Menggunakan Smart Context Chips dan Shortcut Finding-to-Hypothesis | Saya dapat mencatat temuan dan memformulasikan hipotesis secara instan tanpa pengetikan berulang. | **P0 (Must)** |
+| **US-15** | Pengguna | Menggunakan AI Auto-Draft pada form hipotesis | AI membantu melengkapi reasoning, expected result, dan test approach secara otomatis dengan kendali penuh di tangan saya. | **P0 (Must)** |
+| **US-16** | Pengguna | Mengakses penjelasan kontekstual 3-layer dan perintah konkret pada setiap item checklist | Saya memahami alasan metodologi, risiko bahaya/rabbit-hole, dan contoh sintaks alat tanpa meninggalkan konteks latihan. | **P0 (Must)** |
 
 ---
 
@@ -252,12 +255,17 @@ CTF Methodology Trainer menghadirkan ekosistem latihan yang bertindak layaknya *
   - Render dinamis grup checklist (*Core Methodology*, *Playbook Layanan*, *AI Suggested*).
   - Tanda prioritas (*Required* merah/oranye, *Recommended* biru, *Suggested* abu-abu).
   - Indikator asal-usul checklist (*Provenance Badge*).
+  - **Contextual Checklist Explanation & Commands Dialog:** Kartu penjelasan 3-layer pada setiap item checklist (Alasan Metodologis, Peringatan Bahaya / Rabbit-Hole, dan Dialog Contoh Perintah Terminal Praktis).
+  - **Navigasi Fase Fleksibel & Cek Reversibel:** Pengguna dapat meninjau fase terdahulu tanpa merusak state, membatalkan checklist jika bukti keliru, dan melihat peringatan deviasi secara proaktif.
 * **Kolom Tengah (Investigation Workstation):**
   - Tabulasi kerja: **Findings** (bukti & layanan), **Hypotheses** (rumusan pengujian), **Attempts** (eksekusi pengujian), **Notes** (catatan bebas).
-  - Form pencatatan cepat dengan klasifikasi tipe konteks (*service, port, credential, vulnerability*).
+  - **Smart Context Chips:** 12 tombol saran konteks siap klik (`HTTP`, `SSH`, `SMB`, `FTP`, `DNS`, `MySQL`, `local-shell`, `root-shell`, `Linux`, `Windows`, `web`, `auth`) pada form temuan (Add & Edit) untuk eliminasi pengetikan berulang.
+  - **Shortcut Finding $\to$ Hypothesis:** Tombol `[+ Formulate Hypothesis]` langsung di kartu temuan yang otomatis membuka tab Hypotheses, menautkan finding terpilih, dan mengisi template awal.
+  - **AI Auto-Draft Hypothesis:** Tombol `[✨ Auto-Draft with AI]` pada form hipotesis yang melengkapi *Reasoning*, *Expected Result*, dan *Test Approach* menggunakan Gemini (didukung *deterministic curated fallback* saat offline/rate-limited).
+  - **Cross-Tab Ask Mentor:** Tombol bimbingan langsung dari kartu hipotesis yang membawa konteks investigasi ke tab AI Mentor tanpa mengetik ulang.
 * **Kolom Kanan (Context & AI Mentor Panel):**
   - **Live Context Summary:** Ringkasan attack surface yang telah dikonfirmasi pengguna.
-  - **AI Mentor Chat & Hint System:** Tombol *Get Hint* dengan pemilih level spoiler (0–6), penjelasan konsep metodologi, dan area tempel output terminal (*Paste Output Analyzer*).
+  - **AI Mentor Chat & Hint System:** Tombol *Get Hint* dengan pemilih level spoiler (0–6), penjelasan konsep metodologi, area tempel output terminal (*Paste Output Analyzer*), dan *prefilled query input* dari kartu temuan/hipotesis.
 
 #### 3. Halaman Review & Evaluasi Sesi (`/training/[sessionId]/review`)
 * **Status Terkunci Sebelum Selesai:** Jika sesi belum berstatus `completed`, halaman menampilkan layar proteksi agar rute solusi tidak bocor sebelum waktunya.
@@ -318,6 +326,11 @@ CTF Methodology Trainer menghadirkan ekosistem latihan yang bertindak layaknya *
 | **FR-INVESTIGATION-02** | Perumusan Hipotesis | Memungkinkan pengguna membuat hipotesis pengujian dengan format: Asumsi -> Dasar Bukti -> Rencana Verifikasi -> Hasil (`open`, `confirmed`, `rejected`, `inconclusive`). |
 | **FR-INVESTIGATION-03** | Pencatatan Percobaan (Attempts)| Mencatat perintah eksploitasi nyata yang dijalankan di Kali Linux beserta output singkat dan status keberhasilannya. |
 | **FR-INVESTIGATION-04** | Catatan Lapangan (Notes) | Editor catatan bebas berbasis markdown untuk menyimpan coretan, kredensial sementara, dan observasi unik. |
+| **FR-INVESTIGATION-05** | Smart Context Chips | Menyediakan 12 tombol saran konteks cepat (`HTTP`, `SSH`, `SMB`, `FTP`, `DNS`, `MySQL`, `local-shell`, `root-shell`, `Linux`, `Windows`, `web`, `auth`) di form Tambah & Edit Finding untuk eliminasi pengetikan berulang. |
+| **FR-INVESTIGATION-06** | Shortcut Finding $\to$ Hypothesis | Tombol langsung `[+ Formulate Hypothesis]` di kartu temuan yang otomatis membuka tab Hypotheses, mengaitkan finding terkait, dan menyematkan template awal. |
+| **FR-INVESTIGATION-07** | AI Auto-Draft Hypothesis | Fitur asistensi cerdas via tombol `[✨ Auto-Draft with AI]` pada form hipotesis yang melengkapi *Reasoning*, *Expected Result*, dan *Test Approach* dengan Gemini, didukung fallback kurasi deterministik saat offline. |
+| **FR-INVESTIGATION-08** | Cross-Tab Ask Mentor with Context | Tombol konsultasi mentor langsung dari kartu hipotesis/temuan yang membawa konteks investigasi ke tab AI Mentor tanpa mengetik ulang. |
+| **FR-INVESTIGATION-09** | Contextual Checklist Explanation | Penjelasan kontekstual 3-lapisan (Alasan Metodologis, Peringatan Bahaya / Rabbit-Hole, dan Dialog Contoh Perintah Terminal Praktis) pada setiap item checklist metodologi. |
 
 ### 6.6 Sistem Bimbingan & AI Mentor (FR-MENTOR)
 
