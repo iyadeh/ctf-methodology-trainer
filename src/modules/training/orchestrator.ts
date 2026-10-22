@@ -8,6 +8,9 @@ import type { GraphVerification } from "../verification/types";
 import { parseWriteupFile } from "../writeups/parser";
 import * as genRepo from "./generation-repository";
 import { createTrainingSession } from "./service";
+import { generateMilestonesFromFactsAndGraph } from "./milestone-generator";
+import { initializeSessionMilestones } from "./milestone-service";
+import type { TrainingTransaction } from "./repository";
 
 export interface GenerateTrainingSessionInput {
   readonly writeupFile: {
@@ -190,6 +193,8 @@ export async function generateTrainingSession(
       name: sessionName,
     });
 
+    const milestoneDrafts = generateMilestonesFromFactsAndGraph(facts, graph);
+
     // Atomically persist hidden knowledge & link with session
     await genRepo.generationTransaction(async (tx) => {
       await genRepo.persistHiddenKnowledge(tx, {
@@ -199,6 +204,12 @@ export async function generateTrainingSession(
         graph,
         verification,
       });
+
+      await initializeSessionMilestones(
+        sessionAggregate.session.id,
+        milestoneDrafts,
+        tx as unknown as TrainingTransaction,
+      );
     });
 
     // Mark Generation Run Completed

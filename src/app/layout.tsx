@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppShell } from "@/components/layout/app-shell";
+import { ThemeSynchronizer } from "@/components/layout/theme-synchronizer";
 import { getAppSettings } from "@/modules/settings";
 import "./globals.css";
 
@@ -41,23 +42,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       className={`dark ${geistSans.variable} ${geistMono.variable} h-full antialiased ${initialReducedMotion ? "reduced-motion" : ""}`}
       suppressHydrationWarning
     >
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  var d = localStorage.getItem('ctf-methodology-density');
-                  if (d) document.documentElement.setAttribute('data-density', d);
-                  var m = localStorage.getItem('ctf-methodology-reduced-motion');
-                  if (m === 'true') document.documentElement.classList.add('reduced-motion');
-                } catch(e) {}
-              })();
-            `,
-          }}
-        />
-      </head>
       <body className="min-h-dvh bg-background text-foreground font-sans">
+        <ThemeSynchronizer />
         <AppShell>{children}</AppShell>
       </body>
     </html>
