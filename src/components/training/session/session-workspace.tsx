@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckSquare, Compass, FileText, Lightbulb, LockOpen, Search, Tag } from "lucide-react";
+import { CheckSquare, Compass, FileText, Lightbulb, LockOpen, Search, Sparkles, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TrainingSessionAggregate } from "@/modules/training/types";
 import type { HintMetrics, HintRecord } from "@/modules/mentor/types";
@@ -16,6 +16,8 @@ import { NotesPanel } from "./notes-panel";
 import { ContextPanel } from "./context-panel";
 import { MentorPanel } from "./mentor-panel";
 import { ReferencePathPanel } from "./reference-path-panel";
+import { GuidedTasksPanel } from "./guided-tasks-panel";
+import { AdventureModePanel } from "./adventure-mode-panel";
 
 interface SessionWorkspaceProps {
   readonly aggregate: TrainingSessionAggregate;
@@ -25,6 +27,7 @@ interface SessionWorkspaceProps {
 }
 
 type TabType =
+  | "tasks"
   | "checklist"
   | "findings"
   | "hypotheses"
@@ -40,13 +43,27 @@ export function SessionWorkspace({
   revealedReferencePath,
 }: SessionWorkspaceProps) {
   const isCompleted = aggregate.session.status === "completed";
+  const isGuidedMode = aggregate.session.mode === "guided";
+  const milestones = aggregate.milestones ?? [];
+  const remainingTasks = milestones.filter((m) => m.status !== "completed").length;
+  const currentActiveMilestone =
+    milestones.find((m) => m.status === "unlocked") ??
+    milestones.find((m) => m.status === "locked");
+
   const [activeTab, setActiveTab] = useState<TabType>(
-    isCompleted && revealedReferencePath?.available ? "reference-path" : "checklist",
+    isCompleted && revealedReferencePath?.available
+      ? "reference-path"
+      : isGuidedMode
+        ? "tasks"
+        : "checklist",
   );
   const [selectedPhaseKey, setSelectedPhaseKey] = useState<string | null>(null);
   const [mentorPrefilledQuery, setMentorPrefilledQuery] = useState<string | null>(null);
   const [mentorFocusTitle, setMentorFocusTitle] = useState<string | null>(null);
   const [hypothesisInitialTarget, setHypothesisInitialTarget] = useState<HypothesisInitialTarget | null>(null);
+
+  // Derive effective tab: fallback to checklist if mode is adventure and tasks was selected
+  const currentTab: TabType = !isGuidedMode && activeTab === "tasks" ? "checklist" : activeTab;
 
   const handleConsultMentor = (query: string, focusTitle?: string) => {
     setMentorPrefilledQuery(query);
@@ -74,6 +91,16 @@ export function SessionWorkspace({
   const isFinalPhase = currentPhaseIndex === phases.length - 1;
 
   const tabs: { id: TabType; label: string; count?: number; icon: React.ComponentType<{ className?: string }> }[] = [
+    ...(isGuidedMode
+      ? [
+          {
+            id: "tasks" as TabType,
+            label: "Guided Tasks",
+            count: remainingTasks > 0 ? remainingTasks : undefined,
+            icon: Sparkles,
+          },
+        ]
+      : []),
     { id: "checklist", label: "Checklist", icon: CheckSquare },
     { id: "findings", label: "Findings", count: findings.length, icon: Search },
     { id: "hypotheses", label: "Hypotheses", count: hypotheses.length, icon: Lightbulb },
@@ -104,16 +131,53 @@ export function SessionWorkspace({
         viewedPhaseKey={viewedPhase?.semanticKey ?? null}
         onSelectPhase={(phaseKey) => {
           setSelectedPhaseKey(phaseKey);
-          setActiveTab("checklist");
+          if (currentTab !== "tasks") {
+            setActiveTab("checklist");
+          }
         }}
       />
+
+      {/* Adventure Mode Banner & Direct Flags */}
+      {session.mode === "adventure" && (
+        <AdventureModePanel
+          sessionId={session.id}
+          targetIp={session.targetIp}
+          userFlagSubmitted={session.userFlag}
+          userFlagSubmittedAt={session.userFlagSubmittedAt}
+          rootFlagSubmitted={session.rootFlag}
+          rootFlagSubmittedAt={session.rootFlagSubmittedAt}
+          isCompleted={isCompleted}
+        />
+      )}
+
+      {/* Guided Mode: Active Task Spotlight Bar when viewing other tabs */}
+      {isGuidedMode && currentTab !== "tasks" && currentActiveMilestone && (
+        <div className="border-b border-border bg-primary/5 px-4 sm:px-6 py-2.5 flex items-center justify-between text-xs font-mono">
+          <div className="flex items-center gap-2 truncate">
+            <span className="font-semibold text-primary shrink-0">
+              Current Task {currentActiveMilestone.sortOrder}:
+            </span>
+            <span className="text-foreground truncate">
+              {currentActiveMilestone.title} — {currentActiveMilestone.question}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab("tasks")}
+            className="text-primary hover:underline font-semibold ml-4 shrink-0 flex items-center gap-1"
+          >
+            <span>Open Task</span>
+            <span>→</span>
+          </button>
+        </div>
+      )}
 
       {/* Tabs navigation */}
       <div className="border-b border-border bg-card/40 px-4 sm:px-6">
         <nav className="flex space-x-1 sm:space-x-4" aria-label="Session sections">
           {tabs.map((tab) => {
             const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
+            const isActive = currentTab === tab.id;
 
             return (
               <button
@@ -152,7 +216,17 @@ export function SessionWorkspace({
 
       {/* Tab content */}
       <main className="flex-1 bg-background/50">
-        {activeTab === "checklist" && (
+        {currentTab === "tasks" && (
+          <GuidedTasksPanel
+            sessionId={session.id}
+            milestones={milestones}
+            currentPhaseKey={currentPhase?.semanticKey}
+            viewedPhaseKey={viewedPhase?.semanticKey}
+            isCompleted={isCompleted}
+            onConsultMentor={handleConsultMentor}
+          />
+        )}
+        {currentTab === "checklist" && (
           <ChecklistSection
             sessionId={session.id}
             currentPhase={currentPhase}
@@ -164,7 +238,7 @@ export function SessionWorkspace({
             }}
           />
         )}
-        {activeTab === "findings" && (
+        {currentTab === "findings" && (
           <FindingsPanel
             sessionId={session.id}
             findings={findings}
@@ -172,7 +246,7 @@ export function SessionWorkspace({
             onFormulateHypothesis={handleFormulateHypothesis}
           />
         )}
-        {activeTab === "hypotheses" && (
+        {currentTab === "hypotheses" && (
           <HypothesesPanel
             sessionId={session.id}
             hypotheses={hypotheses}
@@ -183,15 +257,15 @@ export function SessionWorkspace({
             initialTarget={hypothesisInitialTarget}
           />
         )}
-        {activeTab === "notes" && (
+        {currentTab === "notes" && (
           <NotesPanel
             sessionId={session.id}
             notes={notes}
             isCompleted={isCompleted}
           />
         )}
-        {activeTab === "context" && <ContextPanel context={context} />}
-        {activeTab === "mentor" && (
+        {currentTab === "context" && <ContextPanel context={context} />}
+        {currentTab === "mentor" && (
           <MentorPanel
             sessionId={session.id}
             currentPhaseName={currentPhase?.name || "Reconnaissance"}
@@ -206,7 +280,7 @@ export function SessionWorkspace({
             prefilledQuery={mentorPrefilledQuery}
           />
         )}
-        {activeTab === "reference-path" && (
+        {currentTab === "reference-path" && (
           <ReferencePathPanel referencePath={revealedReferencePath ?? null} />
         )}
       </main>

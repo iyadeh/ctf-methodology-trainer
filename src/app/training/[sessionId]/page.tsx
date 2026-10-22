@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getRevealedReferencePath, getTrainingSession } from "@/modules/training/service";
+import { getOrInitializeSessionMilestones } from "@/modules/training/milestone-service";
 import { TrainingSessionError, type TrainingSessionAggregate } from "@/modules/training/types";
 import { getSessionHintsAndMetrics } from "@/modules/mentor/service";
 import { SessionWorkspace } from "@/components/training/session/session-workspace";
@@ -32,6 +33,23 @@ export default async function TrainingSessionPage({ params }: SessionPageProps) 
   let aggregate: TrainingSessionAggregate;
   try {
     aggregate = await getTrainingSession(sessionId);
+    if (!aggregate.milestones || aggregate.milestones.length === 0) {
+      const initialized = await getOrInitializeSessionMilestones(
+        sessionId,
+        aggregate.session.name,
+      );
+      aggregate = {
+        ...aggregate,
+        milestones: initialized.map((m) => ({
+          ...m,
+          expectedAnswer:
+            aggregate.session.status === "completed" || m.status === "completed"
+              ? m.expectedAnswer
+              : null,
+          answerHash: null,
+        })),
+      };
+    }
   } catch (error) {
     if (error instanceof TrainingSessionError && error.code === "not_found") {
       notFound();

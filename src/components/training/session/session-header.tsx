@@ -33,6 +33,7 @@ import {
   startSessionAction,
 } from "@/app/training/[sessionId]/actions";
 import { CompleteSessionDialog } from "./complete-session-dialog";
+import { ModeSwitcher } from "./mode-switcher";
 
 interface SessionHeaderProps {
   readonly aggregate: TrainingSessionAggregate;
@@ -251,6 +252,15 @@ export function SessionHeader({ aggregate }: SessionHeaderProps) {
               </button>
             )}
             {error && <span className="text-xs text-destructive">{error}</span>}
+          </div>
+
+          {/* Mode Switcher: Guided vs Adventure */}
+          <div className="mt-3.5">
+            <ModeSwitcher
+              sessionId={session.id}
+              currentMode={session.mode}
+              isCompleted={isCompleted}
+            />
           </div>
         </div>
 

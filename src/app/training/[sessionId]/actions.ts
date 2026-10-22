@@ -475,5 +475,65 @@ export async function autoDraftHypothesisAction(
   }
 }
 
+export async function switchSessionModeAction(
+  sessionId: string,
+  mode: "guided" | "adventure",
+) {
+  try {
+    const { switchSessionMode } = await import("@/modules/training/milestone-service");
+    await switchSessionMode(sessionId, mode);
+    revalidatePath(`/training/${sessionId}`);
+    return { ok: true as const, mode };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error: error instanceof Error ? error.message : "Failed to switch training mode",
+    };
+  }
+}
+
+export async function submitMilestoneAnswerAction(
+  sessionId: string,
+  milestoneId: string,
+  answer: string,
+) {
+  try {
+    const { submitMilestoneAnswer } = await import("@/modules/training/milestone-service");
+    const result = await submitMilestoneAnswer(sessionId, milestoneId, answer);
+    if (!result.ok) {
+      return { ok: false as const, error: result.error || "Incorrect answer" };
+    }
+    revalidatePath(`/training/${sessionId}`);
+    return { ok: true as const, milestone: result.milestone };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error: error instanceof Error ? error.message : "Failed to submit answer",
+    };
+  }
+}
+
+export async function submitDirectFlagAction(
+  sessionId: string,
+  flagType: "user_flag" | "root_flag",
+  flagValue: string,
+) {
+  try {
+    const { submitDirectFlag } = await import("@/modules/training/milestone-service");
+    const result = await submitDirectFlag(sessionId, flagType, flagValue);
+    if (!result.ok) {
+      return { ok: false as const, error: result.error || "Invalid flag" };
+    }
+    revalidatePath(`/training/${sessionId}`);
+    return { ok: true as const, message: result.message };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error: error instanceof Error ? error.message : "Failed to submit flag",
+    };
+  }
+}
+
+
 
 

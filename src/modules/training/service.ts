@@ -178,7 +178,15 @@ export async function getTrainingSession(
     notes: sessionNotes,
     context,
     deviations: deviations ?? [],
-    milestones: milestones ?? [],
+    milestones: (milestones ?? []).map((m) => ({
+      ...m,
+      // Rule 11: Hidden Knowledge Security Boundary. Never expose expected answer or answerHash before completion.
+      expectedAnswer:
+        session.status === "completed" || m.status === "completed"
+          ? m.expectedAnswer
+          : null,
+      answerHash: null,
+    })),
     progress: {
       required: calculateCoreProgress(methodologyChecks),
       coverage: calculateMethodologyCoverage(methodologyChecks),
