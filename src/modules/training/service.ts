@@ -15,6 +15,7 @@ import type {
   AdvancePhaseResult,
   SessionCheckRecord,
   TrainingSessionAggregate,
+  TrainingSessionMode,
   TrainingSessionRecord,
 } from "./types";
 import type {
@@ -34,6 +35,7 @@ export type CreateTrainingSessionInput = {
   name: string;
   frameworkSlug?: string;
   frameworkVersion?: number;
+  mode?: TrainingSessionMode;
 };
 
 function toMethodologyCheck(check: SessionCheckRecord): SessionCheckState {
@@ -49,6 +51,7 @@ export async function createTrainingSession({
   name,
   frameworkSlug = ptesFramework.slug,
   frameworkVersion = ptesFramework.version,
+  mode = "guided",
 }: CreateTrainingSessionInput): Promise<TrainingSessionAggregate> {
   const sessionName = name.trim();
 
@@ -91,6 +94,7 @@ export async function createTrainingSession({
       transaction,
       framework.id,
       sessionName,
+      mode,
     );
 
     for (const frameworkPhase of frameworkPhases) {
@@ -137,8 +141,18 @@ export async function createTrainingSession({
 export async function getTrainingSession(
   sessionId: string,
 ): Promise<TrainingSessionAggregate> {
-  const { session, phases, checks, findings, hypotheses, attempts, notes: sessionNotes, context, deviations } =
-    await repository.loadTrainingSessionSnapshot(sessionId);
+  const {
+    session,
+    phases,
+    checks,
+    findings,
+    hypotheses,
+    attempts,
+    notes: sessionNotes,
+    context,
+    deviations,
+    milestones,
+  } = await repository.loadTrainingSessionSnapshot(sessionId);
   const phaseSnapshots = phases.map((phase) => ({
     ...phase,
     checks: checks.filter((check) => check.sessionPhaseId === phase.id),
@@ -164,6 +178,7 @@ export async function getTrainingSession(
     notes: sessionNotes,
     context,
     deviations: deviations ?? [],
+    milestones: milestones ?? [],
     progress: {
       required: calculateCoreProgress(methodologyChecks),
       coverage: calculateMethodologyCoverage(methodologyChecks),

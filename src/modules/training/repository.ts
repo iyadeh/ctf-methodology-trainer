@@ -16,6 +16,7 @@ import {
   notes,
   sessionChecks,
   sessionContexts,
+  sessionMilestones,
   sessionPhases,
   trainingSessions,
 } from "../../lib/db/schema";
@@ -24,6 +25,7 @@ import { TrainingSessionError } from "./types";
 import type {
   SessionCheckRecord,
   SessionPhaseRecord,
+  TrainingSessionMode,
   TrainingSessionRecord,
 } from "./types";
 
@@ -81,10 +83,11 @@ export async function insertTrainingSession(
   transaction: TrainingTransaction,
   frameworkId: string,
   name: string,
+  mode: TrainingSessionMode = "guided",
 ) {
   const [session] = await transaction
     .insert(trainingSessions)
-    .values({ frameworkId, name, status: "not_started" })
+    .values({ frameworkId, name, status: "not_started", mode })
     .returning();
   return session;
 }
@@ -308,6 +311,11 @@ export async function loadTrainingSessionSnapshot(sessionId: string) {
         .from(methodologyDeviations)
         .where(eq(methodologyDeviations.trainingSessionId, sessionId))
         .orderBy(asc(methodologyDeviations.createdAt));
+      const sessionMilestonesList = await transaction
+        .select()
+        .from(sessionMilestones)
+        .where(eq(sessionMilestones.trainingSessionId, sessionId))
+        .orderBy(asc(sessionMilestones.sortOrder));
 
       return {
         session,
@@ -318,6 +326,7 @@ export async function loadTrainingSessionSnapshot(sessionId: string) {
         attempts: sessionAttempts,
         notes: sessionNotes,
         deviations: sessionDeviations,
+        milestones: sessionMilestonesList,
         context: await loadSessionContext(transaction, sessionId),
       };
     },

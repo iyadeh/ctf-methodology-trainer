@@ -24,7 +24,12 @@ describe("Stage 24 — Review Metrics Engine", () => {
     frameworkId: "fw-1",
     name: "Test Machine",
     status: "completed",
+    mode: "guided",
     targetIp: "10.10.11.200",
+    userFlag: null,
+    userFlagSubmittedAt: null,
+    rootFlag: null,
+    rootFlagSubmittedAt: null,
     startedAt: new Date(Date.now() - 3600000), // 1 hour ago
     completedAt: new Date(),
     createdAt: new Date(Date.now() - 3600000),

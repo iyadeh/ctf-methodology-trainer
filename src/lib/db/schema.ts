@@ -39,6 +39,24 @@ export const trainingSessionStatusEnum = pgEnum("training_session_status", [
   "completed",
 ]);
 
+export const trainingSessionModeEnum = pgEnum("training_session_mode", [
+  "guided",
+  "adventure",
+]);
+
+export const milestoneTaskTypeEnum = pgEnum("milestone_task_type", [
+  "question",
+  "user_flag",
+  "root_flag",
+]);
+
+export const milestoneStatusEnum = pgEnum("milestone_status", [
+  "locked",
+  "unlocked",
+  "completed",
+  "skipped",
+]);
+
 export const sessionPhaseStatusEnum = pgEnum("session_phase_status", [
   "locked",
   "active",
@@ -186,7 +204,12 @@ export const trainingSessions = pgTable(
       .references(() => frameworks.id, { onDelete: "restrict" }),
     name: varchar("name", { length: 255 }).notNull(),
     status: trainingSessionStatusEnum("status").default("not_started").notNull(),
+    mode: trainingSessionModeEnum("mode").default("guided").notNull(),
     targetIp: inet("target_ip"),
+    userFlag: text("user_flag"),
+    userFlagSubmittedAt: timestamp("user_flag_submitted_at", { withTimezone: true }),
+    rootFlag: text("root_flag"),
+    rootFlagSubmittedAt: timestamp("root_flag_submitted_at", { withTimezone: true }),
     startedAt: timestamp("started_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     createdAt,
@@ -198,6 +221,7 @@ export const trainingSessions = pgTable(
       table.status,
       table.updatedAt,
     ),
+    index("training_sessions_mode_index").on(table.mode),
   ],
 );
 
@@ -641,5 +665,44 @@ export const hintRecords = pgTable(
     index("hint_records_spoiler_level_index").on(table.spoilerLevel),
   ],
 );
+
+export const sessionMilestones = pgTable(
+  "session_milestones",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    trainingSessionId: uuid("training_session_id")
+      .notNull()
+      .references(() => trainingSessions.id, { onDelete: "cascade" }),
+    sortOrder: integer("sort_order").notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    question: text("question").notNull(),
+    taskType: milestoneTaskTypeEnum("task_type").default("question").notNull(),
+    phase: varchar("phase", { length: 64 }).notNull(),
+    answerHash: varchar("answer_hash", { length: 64 }),
+    expectedAnswer: text("expected_answer"),
+    formatHint: varchar("format_hint", { length: 128 }),
+    hint: text("hint"),
+    status: milestoneStatusEnum("status").default("locked").notNull(),
+    userAnswer: text("user_answer"),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    unique("session_milestones_session_sort_order_unique").on(
+      table.trainingSessionId,
+      table.sortOrder,
+    ),
+    index("session_milestones_training_session_id_index").on(
+      table.trainingSessionId,
+    ),
+    index("session_milestones_status_index").on(table.status),
+    check(
+      "session_milestones_sort_order_positive",
+      sql`${table.sortOrder} > 0`,
+    ),
+  ],
+);
+
 
 

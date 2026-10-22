@@ -5,11 +5,16 @@ import type {
   methodologyDeviations,
   notes,
   sessionChecks,
+  sessionMilestones,
   sessionPhases,
   trainingSessions,
 } from "@/lib/db/schema";
 import type { PhaseGateResult, ProgressResult } from "@/modules/methodology/engine";
 import type { SessionContextWithEvidence } from "../context/types";
+
+export type TrainingSessionMode = "guided" | "adventure";
+export type MilestoneTaskType = "question" | "user_flag" | "root_flag";
+export type MilestoneStatus = "locked" | "unlocked" | "completed" | "skipped";
 
 export type TrainingSessionRecord = typeof trainingSessions.$inferSelect;
 export type SessionPhaseRecord = typeof sessionPhases.$inferSelect;
@@ -19,6 +24,7 @@ export type HypothesisRecord = typeof hypotheses.$inferSelect;
 export type AttemptRecord = typeof attempts.$inferSelect;
 export type NoteRecord = typeof notes.$inferSelect;
 export type MethodologyDeviationRecord = typeof methodologyDeviations.$inferSelect;
+export type SessionMilestoneRecord = typeof sessionMilestones.$inferSelect;
 
 export type SessionPhaseSnapshot = SessionPhaseRecord & {
   checks: SessionCheckRecord[];
@@ -34,6 +40,7 @@ export type TrainingSessionAggregate = {
   notes: NoteRecord[];
   context: SessionContextWithEvidence[];
   deviations?: MethodologyDeviationRecord[];
+  milestones?: SessionMilestoneRecord[];
   progress: {
     required: ProgressResult;
     coverage: ProgressResult;
