@@ -152,6 +152,15 @@ export function verifyMilestoneAnswer(options: VerifyMilestoneOptions): VerifyMi
     }
   }
 
+  // 4. Fallback for exploratory practice without writeup / expected answer
+  if (!expectedAnswer && !answerHash) {
+    return {
+      isCorrect: true,
+      normalizedUserAnswer: normalizedUser,
+      feedback: "Answer accepted for generic methodology practice.",
+    };
+  }
+
   return {
     isCorrect: false,
     normalizedUserAnswer: normalizedUser,

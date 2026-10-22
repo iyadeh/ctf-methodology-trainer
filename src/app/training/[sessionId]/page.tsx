@@ -33,7 +33,12 @@ export default async function TrainingSessionPage({ params }: SessionPageProps) 
   let aggregate: TrainingSessionAggregate;
   try {
     aggregate = await getTrainingSession(sessionId);
-    if (!aggregate.milestones || aggregate.milestones.length === 0) {
+    const needsMilestoneInit =
+      !aggregate.milestones ||
+      aggregate.milestones.length === 0 ||
+      aggregate.milestones.every((m) => !m.completedAt && !m.userAnswer);
+
+    if (needsMilestoneInit) {
       const initialized = await getOrInitializeSessionMilestones(
         sessionId,
         aggregate.session.name,

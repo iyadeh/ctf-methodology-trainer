@@ -1,12 +1,19 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNotNull } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { sessionMilestones, trainingSessions } from "@/lib/db/schema";
+import {
+  generationRuns,
+  sessionMilestones,
+  trainingSessions,
+  writeups,
+} from "@/lib/db/schema";
+import type { ExtractedMachineFacts } from "../facts/types";
 import type {
   SessionMilestoneRecord,
   TrainingSessionMode,
 } from "./types";
 import {
   generateGenericMethodologyMilestones,
+  generateMilestonesFromFactsAndGraph,
   type SessionMilestoneDraft,
 } from "./milestone-generator";
 import { verifyMilestoneAnswer } from "./milestone-verifier";
@@ -53,8 +60,68 @@ export async function initializeSessionMilestones(
 }
 
 /**
+ * Helper to look up extracted machine facts for a session.
+ */
+async function loadFactsForSession(
+  sessionId: string,
+  machineName: string,
+): Promise<ExtractedMachineFacts | null> {
+  // 1. Direct link by trainingSessionId
+  const [directRun] = await db
+    .select({ factsJson: generationRuns.factsJson })
+    .from(generationRuns)
+    .where(
+      and(
+        eq(generationRuns.trainingSessionId, sessionId),
+        isNotNull(generationRuns.factsJson),
+      ),
+    )
+    .limit(1);
+
+  if (directRun?.factsJson) {
+    try {
+      return JSON.parse(directRun.factsJson);
+    } catch {
+      // ignore
+    }
+  }
+
+  // 2. Link by machineName matching writeup filename
+  if (machineName && machineName !== "the target") {
+    const runsWithWriteup = await db
+      .select({
+        factsJson: generationRuns.factsJson,
+        filename: writeups.filename,
+      })
+      .from(generationRuns)
+      .innerJoin(writeups, eq(generationRuns.writeupId, writeups.id))
+      .where(isNotNull(generationRuns.factsJson));
+
+    const matched = runsWithWriteup.find((r) => {
+      const fName = (r.filename || "").toLowerCase();
+      const mName = machineName.toLowerCase();
+      return (
+        fName.includes(mName) ||
+        fName.replace(/\.[^/.]+$/, "") === mName ||
+        mName.includes(fName.replace(/\.[^/.]+$/, ""))
+      );
+    });
+
+    if (matched?.factsJson) {
+      try {
+        return JSON.parse(matched.factsJson);
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
  * Loads all milestones for a session ordered by sortOrder.
- * If none exist, initializes default methodology milestones.
+ * If none exist or if existing were empty unanswerable placeholders, initializes real methodology milestones.
  */
 export async function getOrInitializeSessionMilestones(
   sessionId: string,
@@ -66,12 +133,27 @@ export async function getOrInitializeSessionMilestones(
     .where(eq(sessionMilestones.trainingSessionId, sessionId))
     .orderBy(asc(sessionMilestones.sortOrder));
 
-  if (existing.length > 0) {
+  // If existing milestones are already populated with answers or user has progress, keep them
+  const hasValidAnswers = existing.some((m) => m.expectedAnswer !== null || m.answerHash !== null);
+  const hasUserProgress = existing.some((m) => m.status === "completed" || m.userAnswer !== null);
+
+  if (existing.length > 0 && (hasValidAnswers || hasUserProgress)) {
     return existing;
   }
 
-  // Generate generic methodology fallback milestones
-  const drafts = generateGenericMethodologyMilestones(machineName);
+  // Look up extracted machine facts
+  const facts = await loadFactsForSession(sessionId, machineName);
+
+  // If existing rows were empty unanswerable placeholders (no answers & no user progress), replace them
+  if (existing.length > 0) {
+    await db.delete(sessionMilestones).where(eq(sessionMilestones.trainingSessionId, sessionId));
+  }
+
+  // Generate fact-based milestones if facts exist, otherwise generic methodology fallback
+  const drafts = facts
+    ? generateMilestonesFromFactsAndGraph(facts)
+    : generateGenericMethodologyMilestones(machineName);
+
   return initializeSessionMilestones(sessionId, drafts);
 }
 

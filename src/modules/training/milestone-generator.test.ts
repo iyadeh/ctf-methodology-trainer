@@ -118,7 +118,7 @@ describe("Milestone Generator", () => {
 
     // Task 1: Open Ports Discovery
     expect(milestones[0].title).toBe("Open Ports Discovery");
-    expect(milestones[0].expectedAnswer).toBe("2");
+    expect(milestones[0].expectedAnswer).toContain("2");
     expect(milestones[0].formatHint).toBe("Format: Angka (contoh: 2)");
     expect(milestones[0].answerHash).toBeDefined();
 

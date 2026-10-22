@@ -31,7 +31,7 @@ export function generateMilestonesFromFactsAndGraph(
 
   // 1. Port Scanning Task
   const portCount = facts.services.length;
-  const portCountAnswer = portCount > 0 ? String(portCount) : "2";
+  const portCountAnswer = portCount > 0 ? `${portCount} | ${portCount} ports | ${portCount} port` : "2 | 2 ports";
 
   milestones.push({
     sortOrder: sortOrder++,
@@ -40,7 +40,7 @@ export function generateMilestonesFromFactsAndGraph(
     taskType: "question",
     phase: "reconnaissance",
     expectedAnswer: portCountAnswer,
-    answerHash: hashAnswer(portCountAnswer),
+    answerHash: hashAnswer(String(portCount > 0 ? portCount : 2)),
     formatHint: "Format: Angka (contoh: 2)",
     hint: hasAttackGraph
       ? "Perform an initial SYN port scan on the target IP using nmap (-sC -sV)."
@@ -56,14 +56,19 @@ export function generateMilestonesFromFactsAndGraph(
       s.port === 443 ||
       s.port === 5000 ||
       s.port === 8080 ||
-      s.port === 3000,
+      s.port === 3000 ||
+      s.port === 1881,
   );
 
   const selectedService = webService ?? facts.services[0];
   if (selectedService) {
     const serviceName = selectedService.service;
+    const product = (selectedService as { product?: string }).product || "";
     const banner = selectedService.banner || selectedService.version || "";
-    const expected = banner ? `${serviceName} | ${banner}` : serviceName;
+    const serviceAliases = Array.from(
+      new Set([serviceName, product, banner, selectedService.version].filter(Boolean)),
+    );
+    const expected = serviceAliases.join(" | ");
 
     milestones.push({
       sortOrder: sortOrder++,
@@ -83,13 +88,16 @@ export function generateMilestonesFromFactsAndGraph(
   const surface = facts.surfaces[0];
   if (surface) {
     const loc = surface.urlOrPath || surface.name;
+    const locAliases = loc === "/" ? ["/", "root", "index", "home"] : [loc];
+    const locExpected = locAliases.join(" | ");
+
     milestones.push({
       sortOrder: sortOrder++,
       title: "Surface Discovery",
       question: `What application surface, page, or endpoint was identified during web reconnaissance?`,
       taskType: "question",
       phase: "threat-modeling",
-      expectedAnswer: loc,
+      expectedAnswer: locExpected,
       answerHash: hashAnswer(loc),
       formatHint: `Format: Path / Nama (contoh: ${loc})`,
       hint: "Enumerate directories and web parameters using gobuster, ffuf, or source code inspection.",
@@ -100,14 +108,16 @@ export function generateMilestonesFromFactsAndGraph(
   // 4. Vulnerability Identification
   const vuln = facts.vulnerabilities[0];
   if (vuln) {
-    const vulnAnswer = vuln.category
-      ? `${vuln.title} | ${vuln.category}`
-      : vuln.title;
+    const cve = (vuln as { cve?: string }).cve || "";
+    const vulnAliases = Array.from(
+      new Set([vuln.title, vuln.category, cve].filter(Boolean)),
+    );
+    const vulnAnswer = vulnAliases.join(" | ");
 
     milestones.push({
       sortOrder: sortOrder++,
       title: "Vulnerability Identification",
-      question: `What vulnerability or misconfiguration was identified for ${vuln.affectedTarget}?`,
+      question: `What vulnerability or misconfiguration was identified for ${vuln.affectedTarget || machineName}?`,
       taskType: "question",
       phase: "vulnerability-analysis",
       expectedAnswer: vulnAnswer,
@@ -125,17 +135,25 @@ export function generateMilestonesFromFactsAndGraph(
       f.identifier.toLowerCase().includes("pass") ||
       f.identifier.toLowerCase().includes("cred") ||
       f.identifier.toLowerCase().includes("account") ||
-      f.identifier.toLowerCase().includes("ssh"),
+      f.identifier.toLowerCase().includes("ssh") ||
+      f.identifier.toLowerCase().includes("git"),
   );
 
   if (credentialFinding) {
+    const credParts = credentialFinding.identifier.includes(":")
+      ? credentialFinding.identifier.split(":")
+      : [];
+    const credAnswer = Array.from(
+      new Set([credentialFinding.identifier, ...credParts].filter(Boolean)),
+    ).join(" | ");
+
     milestones.push({
       sortOrder: sortOrder++,
       title: "Initial Foothold Credential",
       question: `What user account or credential was discovered for establishing initial access?`,
       taskType: "question",
       phase: "exploitation",
-      expectedAnswer: credentialFinding.identifier,
+      expectedAnswer: credAnswer,
       answerHash: hashAnswer(credentialFinding.identifier),
       formatHint: `Format: Username / Kredensial (contoh: ${credentialFinding.identifier})`,
       hint: "Review leaked files, database dumps, or exploited services for valid user accounts.",
@@ -169,12 +187,18 @@ export function generateMilestonesFromFactsAndGraph(
       v.title.toLowerCase().includes("sudo") ||
       v.title.toLowerCase().includes("privilege") ||
       v.category.toLowerCase().includes("privilege") ||
-      v.category.toLowerCase().includes("sudo"),
+      v.category.toLowerCase().includes("sudo") ||
+      v.title.toLowerCase().includes("command injection") ||
+      v.title.toLowerCase().includes("bundle"),
   );
 
+  const privEscCandidates = Array.from(
+    new Set([privEscVuln?.title, privEscVuln?.category, privEscStep?.action].filter(Boolean)),
+  );
   const privEscAnswer =
-    privEscVuln?.title ||
-    (privEscStep ? privEscStep.action : "sudo misconfiguration");
+    privEscCandidates.length > 0
+      ? privEscCandidates.join(" | ")
+      : "sudo misconfiguration";
 
   milestones.push({
     sortOrder: sortOrder++,
