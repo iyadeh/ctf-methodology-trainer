@@ -78,6 +78,7 @@ export async function getSessionReview(sessionId: string): Promise<SessionReview
     userPath,
     findings: snapshot.findings,
     referencePath,
+    session: snapshot.session,
   });
 
   // 8. Grounded Improvement Areas

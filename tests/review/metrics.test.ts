@@ -398,6 +398,99 @@ describe("Stage 24 — Review Metrics Engine", () => {
       expect(comparison[0].userStatus).toBe("matched");
       expect(comparison[0].referenceNodeId).toBe("node-1");
     });
+
+    it("matches complex canonical reference steps via tokens, tools, and credentials", () => {
+      const userPath = [
+        {
+          id: "u-1",
+          stepNumber: 1,
+          phase: "reconnaissance",
+          title: "Service Discovery: SSH 22",
+          description: "SSH running",
+          timestamp: new Date(),
+          kind: "service_discovery" as const,
+        },
+      ];
+
+      const findings: FindingRecord[] = [
+        {
+          id: "f-1",
+          trainingSessionId: "session-1",
+          title: "dashboard.php discloses SSH credentials for user baolong",
+          category: "Information Disclosure",
+          evidence: "curl http://10.10.11.200/dashboard.php -> baolong:secret",
+          evidenceState: "confirmed",
+          importance: "high",
+          contextKind: "surface",
+          contextValue: "web",
+          source: null,
+          notes: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: "f-2",
+          trainingSessionId: "session-1",
+          title: "sudo NOPASSWD /usr/local/bin/check_parser privilege escalation",
+          category: "Privilege Escalation",
+          evidence: "sudo /usr/local/bin/check_parser --debug",
+          evidenceState: "confirmed",
+          importance: "high",
+          contextKind: "access",
+          contextValue: "sudo",
+          source: null,
+          notes: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ];
+
+      const referencePath: RevealedReferencePath = {
+        available: true,
+        referencePathNodes: [
+          {
+            id: "ref-node-1",
+            semanticKey: "step.web.dashboard",
+            title: "Retrieve SSH credentials from dashboard.php as user baolong",
+            description: "Credential disclosure",
+            phase: "exploitation",
+            kind: "initial_access",
+            spoilerLevel: 2,
+            isEntryPoint: false,
+            isTerminal: false,
+            toolsUsed: ["curl", "ssh"],
+          },
+          {
+            id: "ref-node-2",
+            semanticKey: "step.sudo.check_parser",
+            title: "Execute check_parser with elevated rights to escalate privileges",
+            description: "Sudo misconfiguration",
+            phase: "privilege_escalation",
+            kind: "privilege_escalation",
+            spoilerLevel: 3,
+            isEntryPoint: false,
+            isTerminal: false,
+            toolsUsed: ["sudo"],
+          },
+        ],
+        allNodes: [],
+        edges: [],
+        entryNodeIds: [],
+        terminalNodeIds: [],
+      };
+
+      const comparison = compareUserAndReferencePaths({
+        userPath,
+        findings,
+        referencePath,
+      });
+
+      expect(comparison).toHaveLength(2);
+      expect(comparison[0].userStatus).toBe("matched");
+      expect(comparison[0].matchedUserStepTitle).toContain("dashboard.php discloses SSH credentials");
+      expect(comparison[1].userStatus).toBe("matched");
+      expect(comparison[1].matchedUserStepTitle).toContain("check_parser");
+    });
   });
 
   describe("computeImprovementAreas and generateDeterministicNarrative", () => {

@@ -564,27 +564,40 @@ export function containsExploitSpoilers(text: string): boolean {
   return spoilerPatterns.some((pattern) => pattern.test(text));
 }
 
+function isGenericPlaceholderSummary(summary?: string | null): boolean {
+  if (!summary) return true;
+  const s = summary.trim().toLowerCase();
+  return (
+    s.includes("standard web and network services configured for methodology practice") ||
+    s.includes("target running standard web") ||
+    s === "no summary available." ||
+    s.length < 15
+  );
+}
+
 /**
- * Ensures session description on cards never leaks exploit solutions prior to completion.
+ * Ensures session description on cards never leaks exploit solutions prior to completion,
+ * and provides clear, differentiated status once completed.
  */
 export function formatSpoilerSafeSessionDescription(
   session: { name: string; status: string; targetIp?: string | null },
   profile?: { summary?: string | null; os?: string | null; difficulty?: string | null } | null,
 ): string {
+  // If completed, provide a clear post-engagement summary
+  if (session.status === "completed") {
+    if (profile?.summary && !isGenericPlaceholderSummary(profile.summary)) {
+      return profile.summary;
+    }
+    const ipSuffix = session.targetIp ? ` on ${session.targetIp}` : "";
+    return `Penetration test completed for ${session.name}${ipSuffix}. Full attack chain, methodology adherence, and post-engagement review verified.`;
+  }
+
   if (session.targetIp) {
     return `Target host ${session.targetIp} assessed using PTES methodology.`;
   }
 
-  // If completed, summary is allowed
-  if (session.status === "completed") {
-    if (profile?.summary) {
-      return profile.summary;
-    }
-    return `Completed penetration testing session for ${session.name}. Full attack path and methodology review unlocked.`;
-  }
-
-  // For uncompleted sessions (not_started, in_progress, paused), check if summary is spoiler-free
-  if (profile?.summary && !containsExploitSpoilers(profile.summary)) {
+  // For uncompleted sessions (not_started, in_progress, paused), check if summary is spoiler-free and non-generic
+  if (profile?.summary && !isGenericPlaceholderSummary(profile.summary) && !containsExploitSpoilers(profile.summary)) {
     return profile.summary;
   }
 

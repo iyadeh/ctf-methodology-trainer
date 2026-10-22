@@ -6,7 +6,7 @@ import type {
   SessionPhaseRecord,
   TrainingSessionRecord,
 } from "../training/types";
-import type { RevealedReferencePath } from "../training/completion";
+import type { RevealedReferencePath, RevealedReferencePathNode } from "../training/completion";
 import type { HintMetrics } from "../mentor/types";
 import type {
   ImprovementArea,
@@ -223,6 +223,31 @@ export function reconstructUserPath(params: {
     });
   }
 
+  // Objective capture from confirmed submitted flags
+  if (session.userFlag) {
+    rawEvents.push({
+      timestamp: session.userFlagSubmittedAt ? new Date(session.userFlagSubmittedAt) : new Date(session.updatedAt),
+      stepNumber: 0,
+      phase: "exploitation",
+      title: "Objective Captured: User Flag Submitted",
+      description: `User flag confirmed: ${session.userFlag}`,
+      kind: "objective_capture",
+      evidence: session.userFlag,
+    });
+  }
+
+  if (session.rootFlag) {
+    rawEvents.push({
+      timestamp: session.rootFlagSubmittedAt ? new Date(session.rootFlagSubmittedAt) : new Date(session.updatedAt),
+      stepNumber: 0,
+      phase: "post_exploitation",
+      title: "Objective Captured: Root Flag Submitted",
+      description: `Root flag confirmed: ${session.rootFlag}`,
+      kind: "objective_capture",
+      evidence: session.rootFlag,
+    });
+  }
+
   // 3. Hypotheses
   for (const hyp of hypotheses) {
     rawEvents.push({
@@ -274,6 +299,124 @@ export function reconstructUserPath(params: {
   return steps;
 }
 
+const COMMON_STOP_WORDS = new Set([
+  "a", "an", "the", "and", "or", "in", "on", "at", "to", "for", "with", "from", "by", "of",
+  "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "do", "does", "did",
+  "performed", "perform", "step", "using", "used", "into", "that", "this", "target", "system",
+  "allows", "allowed", "allowing", "obtain", "obtaining", "transition", "execute", "execution",
+  "read", "write", "access", "via", "through", "then", "after", "before", "over", "under", "between"
+]);
+
+function extractDistinctiveTokens(text: string): string[] {
+  if (!text) return [];
+  const matches = text.toLowerCase().match(/[a-z0-9_.-]{3,}/g) || [];
+  return Array.from(new Set(matches.filter((w) => !COMMON_STOP_WORDS.has(w) && !/^\d+$/.test(w))));
+}
+
+function scoreFindingMatch(
+  refNode: RevealedReferencePathNode,
+  finding: FindingRecord,
+  session?: TrainingSessionRecord,
+): number {
+  const refPort = refNode.port;
+  const refService = (refNode.service || "").toLowerCase();
+  const refTools = (refNode.toolsUsed || []).map((t) => t.toLowerCase());
+  const refTitleLower = refNode.title.toLowerCase();
+  const refDescLower = (refNode.description || "").toLowerCase();
+  const semKeyLower = (refNode.semanticKey || "").toLowerCase();
+
+  const fTitleLower = finding.title.toLowerCase();
+  const fEvidenceLower = (finding.evidence ?? "").toLowerCase();
+  const fCategoryLower = (finding.category ?? "").toLowerCase();
+  const fContextLower = (finding.contextValue ?? "").toLowerCase();
+  const fCombined = `${fTitleLower} ${fEvidenceLower} ${fCategoryLower} ${fContextLower}`;
+
+  let score = 0;
+
+  // 1. Port match
+  if (refPort) {
+    if (
+      fEvidenceLower.includes(`${refPort}/tcp`) ||
+      fEvidenceLower.includes(`${refPort}/udp`) ||
+      fEvidenceLower.includes(`:${refPort}`)
+    ) {
+      score += 40;
+    }
+    if (fTitleLower.includes(String(refPort))) {
+      score += 35;
+    }
+  }
+
+  // 2. Service match
+  if (refService) {
+    if (fContextLower === refService) {
+      score += 30;
+    }
+    if (fTitleLower.includes(refService)) {
+      score += 20;
+    } else if (fCombined.includes(refService)) {
+      score += 15;
+    }
+  }
+
+  // 3. Dynamic token matching from title, semanticKey, and description
+  const refTokens = extractDistinctiveTokens(`${refTitleLower} ${refDescLower} ${semKeyLower}`);
+  for (const token of refTokens) {
+    const isSpecialToken = token.includes(".") || token.includes("_") || token.length >= 6;
+    if (fTitleLower.includes(token)) {
+      score += isSpecialToken ? 40 : 20;
+    } else if (fContextLower.includes(token)) {
+      score += isSpecialToken ? 30 : 15;
+    } else if (fEvidenceLower.includes(token)) {
+      score += isSpecialToken ? 20 : 10;
+    }
+  }
+
+  // 4. Tools match
+  for (const tool of refTools) {
+    if (["cat", "su", "curl", "ssh", "echo"].includes(tool)) continue;
+    if (fTitleLower.includes(tool)) {
+      score += 35;
+    } else if (fEvidenceLower.includes(tool)) {
+      score += 20;
+    }
+  }
+
+  // 5. Objective / Root flag match
+  const isTerminalRef = refNode.isTerminal || refNode.kind === "objective_capture" || refTitleLower.includes("flag");
+  if (isTerminalRef) {
+    if (fTitleLower.includes("root") && fTitleLower.includes("flag")) {
+      score += 80;
+    } else if (fCombined.includes("root.txt") || fCategoryLower.includes("objective")) {
+      score += 60;
+    } else if (fTitleLower.includes("root") || fEvidenceLower.includes("root.txt")) {
+      score += 40;
+    }
+    if (session && session.rootFlag && (fCombined.includes("root") || fEvidenceLower.includes("root"))) {
+      score += 40;
+    }
+  }
+
+  // 6. Semantic category/phase correlation
+  if (refNode.phase === "reconnaissance" && (finding.category.toLowerCase().includes("network") || fContextLower === "service")) {
+    score += 10;
+  }
+  if (
+    refNode.phase === "threat_modeling" &&
+    (finding.category.toLowerCase().includes("surface") || fCombined.includes("directory") || fCombined.includes("scan"))
+  ) {
+    score += 15;
+  }
+  if (
+    (refNode.phase === "privilege_escalation" || refNode.kind === "privilege_escalation") &&
+    (finding.category.toLowerCase().includes("privilege") || finding.category.toLowerCase().includes("sudo") || fCombined.includes("sudo"))
+  ) {
+    score += 15;
+  }
+
+  return score;
+}
+
 /**
  * Compares the learner's User Path against canonical Reference Path nodes.
  */
@@ -281,8 +424,9 @@ export function compareUserAndReferencePaths(params: {
   userPath: readonly UserPathStep[];
   findings: readonly FindingRecord[];
   referencePath: RevealedReferencePath | null;
+  session?: TrainingSessionRecord;
 }): PathComparisonItem[] {
-  const { userPath, findings, referencePath } = params;
+  const { userPath, findings, referencePath, session } = params;
 
   if (!referencePath || !referencePath.available || referencePath.referencePathNodes.length === 0) {
     return [];
@@ -292,57 +436,54 @@ export function compareUserAndReferencePaths(params: {
     const stepNumber = idx + 1;
     const refTitleLower = refNode.title.toLowerCase();
 
-    // Check if user has finding or step matching this reference node
-    let matchedStep: UserPathStep | undefined;
+    // 1. Score findings against refNode
+    let bestFinding: FindingRecord | undefined;
+    let bestScore = 0;
 
-    // Search in findings first
-    const matchedFinding = findings.find((f) => {
-      const fTitleLower = f.title.toLowerCase();
-      const fEvidenceLower = (f.evidence ?? "").toLowerCase();
-
-      // Check port match if reference node has port
-      if (refNode.port && (fEvidenceLower.includes(String(refNode.port)) || fTitleLower.includes(String(refNode.port)))) {
-        return true;
+    for (const f of findings) {
+      const s = scoreFindingMatch(refNode, f, session);
+      if (s > bestScore) {
+        bestScore = s;
+        bestFinding = f;
       }
-      // Check service match
-      if (refNode.service && f.contextValue?.toLowerCase() === refNode.service.toLowerCase()) {
-        return true;
-      }
-      // Check keyword similarity
-      if (
-        (refTitleLower.includes("sql") && (fTitleLower.includes("sql") || fEvidenceLower.includes("sql"))) ||
-        (refTitleLower.includes("login") && (fTitleLower.includes("login") || fEvidenceLower.includes("login"))) ||
-        (refTitleLower.includes("flag") && (f.category.toLowerCase().includes("objective") || fTitleLower.includes("flag")))
-      ) {
-        return true;
-      }
-      return false;
-    });
-
-    if (matchedFinding) {
-      matchedStep = userPath.find((s) => s.title.includes(matchedFinding!.title));
     }
 
+    // 2. Check user path steps
+    let matchedStep = bestFinding ? userPath.find((s) => s.title.includes(bestFinding!.title)) : undefined;
+
     if (!matchedStep) {
-      // Search in user path steps
       matchedStep = userPath.find((s) => {
         const sTitleLower = s.title.toLowerCase();
         const sDescLower = s.description.toLowerCase();
 
-        if (refNode.port && sDescLower.includes(String(refNode.port))) return true;
-        if (refNode.phase === s.phase && sTitleLower.includes(refNode.kind.replace(/_/g, " "))) return true;
+        if (refNode.port && (sDescLower.includes(String(refNode.port)) || sTitleLower.includes(String(refNode.port)))) return true;
         if (refNode.isTerminal && s.kind === "objective_capture") return true;
         if (refNode.isEntryPoint && s.kind === "service_discovery") return true;
+        if (refNode.phase === s.phase && sTitleLower.includes(refNode.kind.replace(/_/g, " "))) return true;
         return false;
       });
     }
 
+    const isTerminalFallback =
+      (refNode.isTerminal || refNode.kind === "objective_capture" || refTitleLower.includes("root flag")) &&
+      Boolean(session?.rootFlag);
+
     let userStatus: PathComparisonItem["userStatus"] = "unmatched";
-    if (matchedFinding || (matchedStep && matchedStep.kind === "objective_capture")) {
+    if (bestScore >= 35 || isTerminalFallback || (matchedStep && matchedStep.kind === "objective_capture")) {
       userStatus = "matched";
-    } else if (matchedStep) {
+    } else if (bestScore >= 15 || Boolean(matchedStep)) {
       userStatus = "partially_matched";
     }
+
+    const displayTitle =
+      matchedStep?.title ||
+      (bestFinding ? `${bestFinding.category}: ${bestFinding.title}` : undefined) ||
+      (isTerminalFallback ? "Objective Captured: Root Flag Submitted" : undefined);
+
+    const displayEvidence =
+      bestFinding?.evidence ||
+      matchedStep?.evidence ||
+      (isTerminalFallback ? session?.rootFlag ?? undefined : undefined);
 
     return {
       referenceNodeId: refNode.id,
@@ -352,8 +493,8 @@ export function compareUserAndReferencePaths(params: {
       referenceKind: refNode.kind,
       referenceTools: refNode.toolsUsed,
       userStatus,
-      matchedUserStepTitle: matchedStep?.title || (matchedFinding ? `${matchedFinding.category}: ${matchedFinding.title}` : undefined),
-      matchedEvidence: matchedFinding?.evidence || matchedStep?.evidence || undefined,
+      matchedUserStepTitle: displayTitle,
+      matchedEvidence: displayEvidence,
       notes:
         userStatus === "matched"
           ? "Step covered and documented in evidence."
