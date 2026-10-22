@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Lightbulb, Lock, Pencil, Plus, ShieldCheck, Sparkles, Tag, Trash2, X } from "lucide-react";
+import { Check, Lightbulb, Loader2, Lock, Pencil, Plus, ShieldCheck, Sparkles, Tag, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,12 +13,15 @@ import {
   findingImportanceEnum,
 } from "@/lib/db/schema";
 import {
+  applyFindingContextSuggestionAction,
   confirmFindingAction,
   createFindingAction,
   deleteFindingAction,
+  suggestFindingContextAction,
   updateFindingAction,
 } from "@/app/training/[sessionId]/actions";
 import { normalizeContext } from "@/modules/context/engine";
+import type { ContextSuggestion } from "@/modules/context/ai-suggestion";
 
 type ContextKind = (typeof findingContextKindEnum.enumValues)[number];
 type ContextKindOption = ContextKind | "none";
@@ -75,6 +78,15 @@ export function FindingsPanel({
   const [editContextValue, setEditContextValue] = useState("");
   const [editImportance, setEditImportance] = useState<ImportanceLevel>("medium");
   const [editEvidenceState, setEditEvidenceState] = useState<"observed" | "inferred" | "confirmed">("confirmed");
+
+  // AI Context Suggestion states
+  const [isDetectingContextAdd, setIsDetectingContextAdd] = useState(false);
+  const [addFormAiNotice, setAddFormAiNotice] = useState<string | null>(null);
+  const [isDetectingContextEdit, setIsDetectingContextEdit] = useState(false);
+  const [editFormAiNotice, setEditFormAiNotice] = useState<string | null>(null);
+  const [cardSuggestions, setCardSuggestions] = useState<Record<string, ContextSuggestion>>({});
+  const [detectingCard, setDetectingCard] = useState<Record<string, boolean>>({});
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<Record<string, boolean>>({});
 
   const handleStartEdit = (f: FindingRecord) => {
     setError(null);
@@ -162,6 +174,134 @@ export function FindingsPanel({
         setError(res.error);
       } else {
         setFindingToDelete(null);
+      }
+    });
+  };
+
+  const handleAutoDetectAdd = async () => {
+    if (!title.trim() && !evidence.trim()) {
+      setError("Please enter a Title or Evidence details first so AI can analyze the context.");
+      return;
+    }
+    setError(null);
+    setIsDetectingContextAdd(true);
+    setAddFormAiNotice(null);
+
+    try {
+      const res = await suggestFindingContextAction(sessionId, {
+        title: title.trim(),
+        evidence: evidence.trim(),
+        category: category.trim(),
+        currentContextKind: contextKind === "none" ? null : contextKind,
+        currentContextValue: contextValue.trim() || null,
+      });
+
+      if (res.ok && res.data.hasSuggestion && res.data.contextKind && res.data.contextValue) {
+        setContextKind(res.data.contextKind as ContextKindOption);
+        setContextValue(res.data.contextValue);
+        if (res.data.category && (!category || category === "Network Service")) {
+          setCategory(res.data.category);
+        }
+        setAddFormAiNotice(
+          `✨ Auto-detected: ${res.data.contextKind}:${res.data.contextValue} — ${res.data.reasoning}${res.data.activatesPlaybook ? ` (Activates ${res.data.activatesPlaybook})` : ""}`
+        );
+      } else if (res.ok) {
+        setAddFormAiNotice(
+          res.data.reasoning || "No canonical context could be detected automatically. You can choose manually."
+        );
+      } else {
+        setError(res.error || "Failed to auto-detect context");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error auto-detecting context");
+    } finally {
+      setIsDetectingContextAdd(false);
+    }
+  };
+
+  const handleAutoDetectEdit = async () => {
+    if (!editTitle.trim() && !editEvidence.trim()) {
+      setError("Please enter a Title or Evidence details first so AI can analyze the context.");
+      return;
+    }
+    setError(null);
+    setIsDetectingContextEdit(true);
+    setEditFormAiNotice(null);
+
+    try {
+      const res = await suggestFindingContextAction(sessionId, {
+        title: editTitle.trim(),
+        evidence: editEvidence.trim(),
+        category: editCategory.trim(),
+        currentContextKind: editContextKind === "none" ? null : editContextKind,
+        currentContextValue: editContextValue.trim() || null,
+      });
+
+      if (res.ok && res.data.hasSuggestion && res.data.contextKind && res.data.contextValue) {
+        setEditContextKind(res.data.contextKind as ContextKindOption);
+        setEditContextValue(res.data.contextValue);
+        if (res.data.category && !editCategory) {
+          setEditCategory(res.data.category);
+        }
+        setEditFormAiNotice(
+          `✨ Auto-detected: ${res.data.contextKind}:${res.data.contextValue} — ${res.data.reasoning}${res.data.activatesPlaybook ? ` (Activates ${res.data.activatesPlaybook})` : ""}`
+        );
+      } else if (res.ok) {
+        setEditFormAiNotice(
+          res.data.reasoning || "No canonical context could be detected automatically."
+        );
+      } else {
+        setError(res.error || "Failed to auto-detect context");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error auto-detecting context");
+    } finally {
+      setIsDetectingContextEdit(false);
+    }
+  };
+
+  const handleDetectCardSuggestion = async (finding: FindingRecord) => {
+    setDetectingCard((prev) => ({ ...prev, [finding.id]: true }));
+    try {
+      const res = await suggestFindingContextAction(sessionId, {
+        title: finding.title,
+        evidence: finding.evidence,
+        category: finding.category,
+        currentContextKind: finding.contextKind,
+        currentContextValue: finding.contextValue,
+      });
+
+      if (res.ok) {
+        setCardSuggestions((prev) => ({ ...prev, [finding.id]: res.data }));
+      }
+    } catch (err) {
+      console.error("Failed to detect card suggestion:", err);
+    } finally {
+      setDetectingCard((prev) => ({ ...prev, [finding.id]: false }));
+    }
+  };
+
+  const handleApplyCardSuggestion = (
+    findingId: string,
+    contextKind: ContextKind,
+    contextValue: string,
+  ) => {
+    startTransition(async () => {
+      const res = await applyFindingContextSuggestionAction(
+        sessionId,
+        findingId,
+        contextKind,
+        contextValue,
+        "confirmed",
+      );
+      if (!res.ok) {
+        setError(res.error);
+      } else {
+        setCardSuggestions((prev) => {
+          const next = { ...prev };
+          delete next[findingId];
+          return next;
+        });
       }
     });
   };
@@ -271,6 +411,49 @@ export function FindingsPanel({
                   placeholder="Paste tool output, banner, or URL observation..."
                   className="mt-1 w-full rounded border border-border bg-background p-2.5 font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 />
+              </div>
+
+              {/* Context Header with AI Auto-Detect */}
+              <div className="space-y-1.5 pt-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-foreground">Target Context (Methodology Anchor)</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAutoDetectAdd}
+                    disabled={isDetectingContextAdd || isPending}
+                    className="h-6 gap-1.5 text-[11px] font-mono text-primary border-primary/40 bg-primary/5 hover:bg-primary/15 transition-colors"
+                  >
+                    {isDetectingContextAdd ? (
+                      <>
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <span>AI Analyzing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-3 w-3" />
+                        <span>AI Auto-Detect</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {addFormAiNotice && (
+                  <div className="rounded border border-primary/30 bg-primary/10 p-2.5 text-xs text-primary flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-1.5 flex-1">
+                      <Sparkles className="h-3.5 w-3.5 shrink-0 mt-0.5 text-primary" />
+                      <span className="leading-relaxed">{addFormAiNotice}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAddFormAiNotice(null)}
+                      className="text-primary/70 hover:text-primary shrink-0"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -498,6 +681,49 @@ export function FindingsPanel({
                         />
                       </div>
 
+                      {/* Context Header with AI Auto-Detect */}
+                      <div className="space-y-1.5 pt-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-foreground">Target Context (Methodology Anchor)</span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleAutoDetectEdit}
+                            disabled={isDetectingContextEdit || isPending}
+                            className="h-6 gap-1.5 text-[11px] font-mono text-primary border-primary/40 bg-primary/5 hover:bg-primary/15 transition-colors"
+                          >
+                            {isDetectingContextEdit ? (
+                              <>
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                <span>AI Analyzing...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="h-3 w-3" />
+                                <span>AI Auto-Detect</span>
+                              </>
+                            )}
+                          </Button>
+                        </div>
+
+                        {editFormAiNotice && (
+                          <div className="rounded border border-primary/30 bg-primary/10 p-2.5 text-xs text-primary flex items-start justify-between gap-2">
+                            <div className="flex items-start gap-1.5 flex-1">
+                              <Sparkles className="h-3.5 w-3.5 shrink-0 mt-0.5 text-primary" />
+                              <span className="leading-relaxed">{editFormAiNotice}</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setEditFormAiNotice(null)}
+                              className="text-primary/70 hover:text-primary shrink-0"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <div>
                           <label htmlFor={`edit-kind-${finding.id}`} className="block text-xs font-medium text-foreground">
@@ -694,11 +920,127 @@ export function FindingsPanel({
                             <span className="font-semibold text-foreground">
                               {finding.contextKind}:{finding.contextValue}
                             </span>
-                            {canonicalKeys.length > 0 && (
+                            {canonicalKeys.length > 0 ? (
                               <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
                                 → {canonicalKeys.join(", ")}
                               </span>
+                            ) : (
+                              <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-400 border border-amber-500/20">
+                                (Non-canonical context)
+                              </span>
                             )}
+                          </div>
+                        );
+                      })()}
+
+                      {/* Smart AI Context Recommendation on Unnormalized Finding Cards */}
+                      {(() => {
+                        const canonicalKeys = finding.contextKind && finding.contextValue
+                          ? normalizeContext(finding.contextKind as ContextKind, finding.contextValue)
+                          : [];
+                        const isUnnormalized = canonicalKeys.length === 0;
+                        const suggestion = cardSuggestions[finding.id];
+                        const isDismissed = dismissedSuggestions[finding.id];
+                        const isDetecting = detectingCard[finding.id];
+
+                        if (!isUnnormalized || isDismissed || isCompleted) return null;
+
+                        if (!suggestion) {
+                          return (
+                            <div className="pt-1">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={isDetecting || isPending}
+                                onClick={() => handleDetectCardSuggestion(finding)}
+                                className="h-6 gap-1.5 text-[11px] font-mono border-primary/40 bg-primary/5 text-primary hover:bg-primary/15 transition-colors"
+                              >
+                                {isDetecting ? (
+                                  <>
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                    <span>AI Analyzing Evidence...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Sparkles className="h-3 w-3" />
+                                    <span>AI Suggest Canonical Context</span>
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          );
+                        }
+
+                        if (suggestion.hasSuggestion && suggestion.contextKind && suggestion.contextValue) {
+                          return (
+                            <div className="mt-2.5 rounded-md border border-primary/40 bg-primary/5 p-3 space-y-2">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                                  <Sparkles className="h-3.5 w-3.5" />
+                                  <span>AI Context Recommendation:</span>
+                                  <Badge variant="outline" className="font-mono text-[10px] border-primary/50 text-primary bg-primary/10">
+                                    {suggestion.contextKind}:{suggestion.contextValue}
+                                  </Badge>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setDismissedSuggestions((prev) => ({ ...prev, [finding.id]: true }))}
+                                  className="text-muted-foreground hover:text-foreground"
+                                  title="Dismiss recommendation"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                              <p className="text-xs text-muted-foreground leading-relaxed">
+                                {suggestion.reasoning}
+                              </p>
+                              {suggestion.activatesPlaybook && (
+                                <p className="text-[11px] font-mono text-emerald-400 font-medium">
+                                  👉 Activates Playbook: {suggestion.activatesPlaybook}
+                                </p>
+                              )}
+                              <div className="flex items-center gap-2 pt-0.5">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  disabled={isPending}
+                                  onClick={() =>
+                                    handleApplyCardSuggestion(
+                                      finding.id,
+                                      suggestion.contextKind as ContextKind,
+                                      suggestion.contextValue!,
+                                    )
+                                  }
+                                  className="h-6 gap-1 text-[11px]"
+                                >
+                                  <Check className="h-3 w-3" />
+                                  Apply & Activate Playbook
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setDismissedSuggestions((prev) => ({ ...prev, [finding.id]: true }))}
+                                  className="h-6 text-[11px] text-muted-foreground"
+                                >
+                                  Dismiss
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="pt-1 flex items-center gap-2 text-[11px] text-muted-foreground font-mono">
+                            <span>No matching canonical playbook for this evidence.</span>
+                            <button
+                              type="button"
+                              onClick={() => setDismissedSuggestions((prev) => ({ ...prev, [finding.id]: true }))}
+                              className="text-xs hover:text-foreground underline underline-offset-2"
+                            >
+                              Dismiss
+                            </button>
                           </div>
                         );
                       })()}

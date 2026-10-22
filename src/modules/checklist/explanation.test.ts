@@ -1,4 +1,5 @@
 import { describe, expect, it, beforeEach } from "vitest";
+import { ptesFramework } from "../methodology/ptes";
 import {
   checkExplanationSchema,
   clearExplanationCache,
@@ -176,8 +177,8 @@ describe("Curated Fallback Generator", () => {
   it("generates valid 3-layer explanation for Post-Exploitation sudo check", () => {
     const ctx: FallbackContext = {
       check: createMockCheck({
-        semanticKey: "post-exploitation.user-and-privilege-enumeration",
-        title: "Enumerate user privileges and sudo permissions",
+        semanticKey: "post-exploitation.review-privilege-escalation-surfaces",
+        title: "Review privilege escalation surfaces",
       }),
       phase: createMockPhase({ semanticKey: "post-exploitation" }),
       targetIp: "10.10.10.20",
@@ -186,9 +187,93 @@ describe("Curated Fallback Generator", () => {
 
     const explanation = generateCuratedFallback(ctx);
     expect(explanation.how.commands.some((c) => c.command === "sudo -l")).toBe(true);
+  });
 
-    const validation = checkExplanationSchema.safeParse(explanation);
-    expect(validation.success).toBe(true);
+  it("generates distinct, non-identical explanations for different checks in threat modeling", () => {
+    const phase = createMockPhase({ semanticKey: "threat-modeling" });
+
+    const ctxEntryPoints: FallbackContext = {
+      check: createMockCheck({
+        semanticKey: "threat-modeling.identify-likely-entry-points",
+        title: "Identify likely entry points",
+      }),
+      phase,
+      targetIp: "10.10.11.200",
+      confirmedFindings: [],
+    };
+
+    const ctxTrustBoundaries: FallbackContext = {
+      check: createMockCheck({
+        semanticKey: "threat-modeling.identify-authentication-and-trust-boundaries",
+        title: "Identify authentication and trust boundaries",
+      }),
+      phase,
+      targetIp: "10.10.11.200",
+      confirmedFindings: [],
+    };
+
+    const expEntryPoints = generateCuratedFallback(ctxEntryPoints);
+    const expTrustBoundaries = generateCuratedFallback(ctxTrustBoundaries);
+
+    expect(checkExplanationSchema.safeParse(expEntryPoints).success).toBe(true);
+    expect(checkExplanationSchema.safeParse(expTrustBoundaries).success).toBe(true);
+
+    // Assert that they are NOT identical
+    expect(expEntryPoints.why.principle).not.toBe(expTrustBoundaries.why.principle);
+    expect(expEntryPoints.how.commands[0]?.command).not.toBe(expTrustBoundaries.how.commands[0]?.command);
+
+    // Assert specific content
+    expect(expEntryPoints.why.principle).toContain("entry points");
+    expect(expTrustBoundaries.why.principle).toContain("Trust boundaries");
+    expect(expTrustBoundaries.how.commands.some((c) => c.command.includes("admin"))).toBe(true);
+  });
+
+  it("ensures all 48 PTES checks across all 6 phases have distinct, non-identical explanations", () => {
+    let totalChecksTested = 0;
+
+    for (const phaseDef of ptesFramework.phases) {
+      const phase = createMockPhase({ semanticKey: phaseDef.semanticKey, name: phaseDef.name });
+      const seenPrinciples = new Set<string>();
+      const seenFirstCommands = new Set<string>();
+
+      for (const checkDef of phaseDef.checks) {
+        const ctx: FallbackContext = {
+          check: createMockCheck({
+            semanticKey: checkDef.semanticKey,
+            title: checkDef.title,
+          }),
+          phase,
+          targetIp: "10.10.11.200",
+          confirmedFindings: [],
+        };
+
+        const explanation = generateCuratedFallback(ctx);
+
+        // Schema validation
+        const valid = checkExplanationSchema.safeParse(explanation);
+        expect(valid.success, `Schema validation failed for ${checkDef.semanticKey}`).toBe(true);
+
+        // Assert distinctness within the phase
+        expect(
+          seenPrinciples.has(explanation.why.principle),
+          `Duplicate principle detected in phase ${phaseDef.semanticKey} for check ${checkDef.semanticKey}`,
+        ).toBe(false);
+        seenPrinciples.add(explanation.why.principle);
+
+        const firstCmd = explanation.how.commands[0]?.command ?? "";
+        expect(
+          seenFirstCommands.has(firstCmd),
+          `Duplicate first command detected in phase ${phaseDef.semanticKey} for check ${checkDef.semanticKey}`,
+        ).toBe(false);
+        seenFirstCommands.add(firstCmd);
+
+        totalChecksTested++;
+      }
+    }
+
+    expect(totalChecksTested).toBe(48);
   });
 });
+
+
 

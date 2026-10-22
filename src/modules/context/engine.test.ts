@@ -33,6 +33,8 @@ describe("context normalization", () => {
     ["access", "bash", ["access:local-shell"]],
     ["access", "remote-shell", ["access:local-shell", "access:remote-shell"]],
     ["access", "reverse shell", ["access:local-shell", "access:remote-shell"]],
+    ["access", "root-shell", ["access:local-shell", "access:root-shell"]],
+    ["access", "root", ["access:local-shell", "access:root-shell"]],
   ] as [ContextKind, string, string[]][])("normalizes %s / %s", (kind, value, expected) => {
     expect(normalizeContext(kind, value)).toEqual(expected);
   });

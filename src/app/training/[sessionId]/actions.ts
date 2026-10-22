@@ -37,6 +37,11 @@ import {
   deleteNote,
   type CreateNoteInput,
 } from "@/modules/training/notes";
+import {
+  suggestCanonicalContext,
+  type SuggestCanonicalContextInput,
+} from "@/modules/context/ai-suggestion";
+import type { ContextKind } from "@/modules/context/engine";
 
 export async function startSessionAction(sessionId: string) {
   try {
@@ -213,6 +218,44 @@ export async function deleteFindingAction(
     return {
       ok: false as const,
       error: error instanceof Error ? error.message : "Failed to delete finding",
+    };
+  }
+}
+
+export async function suggestFindingContextAction(
+  _sessionId: string,
+  input: SuggestCanonicalContextInput,
+) {
+  try {
+    const suggestion = await suggestCanonicalContext(input);
+    return { ok: true as const, data: suggestion };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error: error instanceof Error ? error.message : "Failed to detect context",
+    };
+  }
+}
+
+export async function applyFindingContextSuggestionAction(
+  sessionId: string,
+  findingId: string,
+  contextKind: ContextKind,
+  contextValue: string,
+  evidenceState?: "observed" | "inferred" | "confirmed",
+) {
+  try {
+    await updateFinding(sessionId, findingId, {
+      contextKind,
+      contextValue,
+      evidenceState: evidenceState ?? "confirmed",
+    });
+    revalidatePath(`/training/${sessionId}`);
+    return { ok: true as const };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error: error instanceof Error ? error.message : "Failed to apply context suggestion",
     };
   }
 }
