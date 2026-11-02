@@ -37,8 +37,8 @@ Checklist items and playbooks only unlock when the learner **confirms real evide
 
 ## 📸 Visual Tour
 
-### 1. Interactive PTES Training Workspace
-The primary practice cockpit. Learners navigate through 6 PTES phases with clear phase gates, dynamic service-specific checklists, evidence capture, hypothesis reasoning, and an AI mentor bound by a monotonic spoiler penalty system (Levels 0–6).
+### 1. Interactive PTES Training Workspace & Dual Modes
+The primary practice cockpit. Learners choose between **Guided Mode** (step-by-step milestone questions and answer verification) and **Adventure Mode** (pure PTES exploration), navigating through 6 PTES phases with clear phase gates, interactive retrospective phase inspection, reversible checklist checks, dynamic service-specific playbooks, evidence capture, hypothesis reasoning with AI auto-drafting, and an AI mentor bound by a monotonic spoiler penalty system (Levels 0–6).
 
 ![Training Workspace](docs/images/03-training-workspace.png)
 
@@ -124,7 +124,7 @@ Session Review (Deterministic Scoring + Reference Path Reveal)
 | **Validation** | [Zod v4](https://zod.dev/) | Strict schema validation at all trust boundaries (forms, routes, AI outputs) |
 | **AI Engine** | [Google Gemini API](https://ai.google.dev/) (`@google/genai`) | Structured fact extraction, attack graph modeling, contextual progressive hints |
 | **Document Parser** | `unpdf` | Robust in-memory PDF parsing and text normalization |
-| **Testing** | [Vitest](https://vitest.dev/) | Ultra-fast unit testing & full end-to-end reliability suites (118 tests) |
+| **Testing** | [Vitest](https://vitest.dev/) | Ultra-fast unit testing & full end-to-end reliability suites (175+ tests) |
 | **Package Manager**| [pnpm](https://pnpm.io/) | Fast, deterministic, disk-efficient package management |
 
 ---

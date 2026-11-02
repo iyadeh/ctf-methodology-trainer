@@ -728,6 +728,7 @@ Friendly
 [ Easy ]
 [ Linux ]
 [ 192.168.56.105 ]
+[ Mode: Guided / Adventure Switcher ]
 
 A beginner-friendly machine focused on basic
 enumeration and common misconfigurations.
@@ -737,28 +738,34 @@ enumeration and common misconfigurations.
 
 Target IP harus berasal dari TrainingSession, bukan permanent Machine profile.
 
+**Training Mode Switcher:**
+Di sisi kanan header, terdapat tombol toggle mode latihan:
+- **Guided Mode:** Menampilkan panel tantangan milestone pertanyaan berjenjang dari writeup, form submisi jawaban, dan filter fase PTES.
+- **Adventure Mode:** Menyembunyikan milestone untuk latihan eksplorasi metodologi PTES mandiri murni tanpa tuntunan pertanyaan.
+
 ---
 
-## 7.2 Phase Stepper
+## 7.2 Interactive Phase Stepper & Inspection Navigation
 
-Horizontal:
+Horizontal stepper yang dapat diklik untuk navigasi fase:
 
 ```text
-1 Reconnaissance
-2 Threat Modeling
-3 Vulnerability Analysis
-4 Exploitation
-5 Post Exploitation
-6 Reporting
+1 Reconnaissance [Completed]
+2 Threat Modeling [Active]
+3 Vulnerability Analysis [Locked]
+4 Exploitation [Locked]
+5 Post Exploitation [Locked]
+6 Reporting [Locked]
 ```
 
-Current phase memakai green.
-
-Completed phase memiliki completed state.
-
-Future phases muted.
-
-Jika phase gate belum lolos, clicking future phase memunculkan warning.
+- **Active Phase:** Memakai aksen hijau (`bg-emerald-500/20 text-emerald-400`).
+- **Completed Past Phases:** Memiliki visual centang hijau dan **dapat diklik** (`onSelectPhase`) untuk masuk ke mode inspeksi retrospektif (`viewedPhaseKey`).
+  - Menampilkan lencana: `[Phase 01: Reconnaissance (Completed / Inspection Mode)]`.
+  - Mengizinkan mencentang checklist lampau yang terlewat (*retrospective editing*) untuk menaikkan skor cakupan metodologi (*coverage*).
+  - Menampilkan floating banner di kanan bawah: `[ Jump to Active Phase: Threat Modeling ➔ ]` untuk kembali ke fase aktif seketika.
+- **Future Locked Phases:** Muted dengan ikon gembok. Mengklik fase masa depan sebelum lolos *Phase Gate* memunculkan peringatan gate yang belum terpenuhi.
+- **Reversible Check Items:** Checkbox mendukung `uncheck` (membatalkan selesai) dan item yang di-skip memiliki tombol `↺ Undo Skip`.
+- **3-Layer Contextual Explanation (`?` Button):** Setiap item checklist memiliki tombol `(?)` yang membuka dialog 3-lapisan (*Why PTES*, *What Target Context*, dan *How Commands Accordion* dengan tombol copy perintah terminal).
 
 ---
 

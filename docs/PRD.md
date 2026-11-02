@@ -349,6 +349,17 @@ CTF Methodology Trainer menghadirkan ekosistem latihan yang bertindak layaknya *
 | **FR-REVIEW-02** | Pembukaan Reference Path | Graf serangan resmi dan seluruh fakta rahasia writeup dibuka ke pengguna untuk studi komparasi. |
 | **FR-REVIEW-03** | Rekonstruksi User Path | Mengurutkan seluruh temuan, hipotesis, petunjuk, dan percobaan pengguna secara kronologis menjadi graf rute nyata pengguna. |
 | **FR-REVIEW-04** | Metrik Disiplin Deterministik | Menghitung secara eksak: *Phase Gate Compliance %*, *Reconnaissance Coverage %*, *Hypothesis Discipline Ratio*, dan *Hint Penalty Score*. |
+| **FR-REVIEW-05** | Dynamic Token-Based Path Matcher | Algoritma komparasi jalur serangan berbasis scoring multi-signal dinamis (tools, ports, services, scripts, binary names, entity tokens, dan stopwords filtering) untuk mencocokkan temuan pengguna dengan simpul kanonikal secara adil dan presisi. |
+
+### 6.8 Mode Latihan & Milestone Challenge (FR-TRAIN-MODE)
+
+| ID | Nama Kebutuhan | Deskripsi & Aturan Bisnis |
+|---|---|---|
+| **FR-TRAIN-MODE-01** | Mode Guided vs Adventure | Pengguna dapat memilih mode latihan saat membuat sesi atau beralih mode sewaktu-waktu di header sesi: *Guided Mode* (tantangan bertahap terstruktur) dan *Adventure Mode* (eksplorasi metodologi PTES mandiri murni). |
+| **FR-MILESTONE-01** | Milestone Generation dari Fakta | Mengekstrak checkpoint tantangan bertahap dari `factsJson` writeup (pertanyaan observasi port, service banner, initial access, privilege escalation, hingga user/root flag). |
+| **FR-MILESTONE-02** | Tolerant Milestone Verification | Mesin verifikasi jawaban deterministik yang mendukung alias toleran untuk nilai angka, nama protokol, nama file, dan format flag CTF. |
+| **FR-CHECK-REVERSIBLE** | Reversible Checklist & Evidence Editing | Mendukung aksi `uncheck` dan `unskip` pada checklist aktif serta pengeditan/penghapusan in-place pada temuan dan hipotesis dengan pembersihan relasi context observasi otomatis. |
+| **FR-NAV-RETROSPECTIVE** | Navigasi Stepper Interaktif & Retrospektif | Stepper fase yang dapat diklik bebas untuk menginspeksi checklist fase lampau (`[Completed / Inspection Mode]`), melengkapi checklist yang terlewat untuk menaikkan skor coverage, dan kembali ke fase aktif via tombol `Jump to Active Phase`. |
 
 ---
 
@@ -370,6 +381,7 @@ erDiagram
     MACHINE_PROFILES ||--o{ TRAINING_SESSIONS : "menjadi dasar"
     TRAINING_SESSIONS ||--o{ SESSION_PHASES : "menjalankan"
     SESSION_PHASES ||--o{ SESSION_CHECKS : "memiliki"
+    TRAINING_SESSIONS ||--o{ SESSION_MILESTONES : "memiliki checkpoint"
     TRAINING_SESSIONS ||--o{ FINDINGS : "mengumpulkan"
     TRAINING_SESSIONS ||--o{ HYPOTHESES : "merumuskan"
     HYPOTHESES ||--o{ ATTEMPTS : "diuji melalui"
@@ -383,14 +395,15 @@ erDiagram
 2. **`generation_runs`:** Jejak proses orkestrasi pembedahan writeup oleh AI (status ekstraksi, verifikasi, dan durasi).
 3. **`machine_profiles`:** Identitas publik mesin hasil ekstraksi (nama mesin, estimasi kesulitan, sistem operasi target).
 4. **`attack_graphs`:** Kunci jawaban graf serangan tersembunyi yang merepresentasikan jalur eksploitasi resmi writeup.
-5. **`training_sessions`:** Sesi latihan pengguna aktif (status sesi, waktu mulai, waktu selesai, fase aktif saat ini).
+5. **`training_sessions`:** Sesi latihan pengguna aktif (status sesi, mode latihan: `guided` / `adventure`, submisi flag `user_flag` & `root_flag`, target IP, waktu mulai, waktu selesai).
 6. **`session_phases`:** Instansiasi 6 fase PTES dalam sesi aktif beserta status penguncian dan stempel waktu selesai.
-7. **`session_checks`:** Item checklist dinamis yang aktif dalam sesi (judul, prioritas, status centang, bukti asal-usul/provenance).
-8. **`findings`:** Bukti nyata yang ditemukan pengguna di target (IP, port, protokol, versi banner, status verifikasi).
-9. **`hypotheses`:** Rencana pengujian ilmiah yang disusun pengguna sebelum meluncurkan serangan.
-10. **`attempts`:** Catatan pelaksanaan pengujian nyata di Kali Linux beserta parameter dan hasil observasi.
-11. **`hint_records`:** Catatan riwayat penggunaan bantuan AI (level petunjuk yang diminta, stempel waktu, penalti skor).
-12. **`methodology_deviations`:** Catatan pelanggaran metodologi saat pengguna melompati *Phase Gate* yang belum tuntas.
+7. **`session_checks`:** Item checklist dinamis yang aktif dalam sesi (judul, prioritas, status centang, bukti asal-usul/provenance, penjelasan AI 3-layer `explanation_json`).
+8. **`session_milestones`:** Tantangan pertanyaan checkpoint bertahap untuk Guided Mode (pertanyaan, hash jawaban, alias toleran, status terkunci/terbuka/selesai).
+9. **`findings`:** Bukti nyata yang ditemukan pengguna di target (IP, port, protokol, versi banner, status verifikasi).
+10. **`hypotheses`:** Rencana pengujian ilmiah yang disusun pengguna sebelum meluncurkan serangan.
+11. **`attempts`:** Catatan pelaksanaan pengujian nyata di Kali Linux beserta parameter dan hasil observasi.
+12. **`hint_records`:** Catatan riwayat penggunaan bantuan AI (level petunjuk yang diminta, stempel waktu, penalti skor).
+13. **`methodology_deviations`:** Catatan pelanggaran metodologi saat pengguna melompati *Phase Gate* yang belum tuntas.
 
 ---
 
@@ -476,27 +489,30 @@ Mendukung 3 mode kepadatan tampilan yang dapat diatur di menu Pengaturan:
 
 ---
 
-## 12. Rencana Rilis & Milestone Roadmap (Tahap 01 – 30)
+## 12. Rencana Rilis & Milestone Roadmap (Tahap 01 – 33)
 
-Pengembangan CTF Methodology Trainer MVP telah diselesaikan secara terstruktur melalui 30 tahapan rekayasa berurutan:
+Pengembangan CTF Methodology Trainer telah diselesaikan secara terstruktur melalui 30 tahapan MVP dan dilanjutkan dengan tahapan peningkatan fitur pasca-MVP:
 
 ```
-[ Tahap 01 - 05: Pondasi Web & UI Shell ]     ==> COMPLETE (100%)
-                     │
-                     v
-[ Tahap 06 - 14: Engine Metodologi & DB ]     ==> COMPLETE (100%)
-                     │
-                     v
-[ Tahap 15 - 20: AI Ingestion & Attack Graph ] ==> COMPLETE (100%)
-                     │
-                     v
-[ Tahap 21 - 24: Guidance, Hints, & Review ]  ==> COMPLETE (100%)
-                     │
-                     v
-[ Tahap 25 - 27: Reference Surfaces & Config] ==> COMPLETE (100%)
-                     │
-                     v
-[ Tahap 28 - 30: Reliability, Lifecycle & AC] ==> COMPLETE (100% - PRODUCTION BASELINE)
+[ Tahap 01 - 05: Pondasi Web & UI Shell ]         ==> COMPLETE (100%)
+                         │
+                         v
+[ Tahap 06 - 14: Engine Metodologi & DB ]         ==> COMPLETE (100%)
+                         │
+                         v
+[ Tahap 15 - 20: AI Ingestion & Attack Graph ]     ==> COMPLETE (100%)
+                         │
+                         v
+[ Tahap 21 - 24: Guidance, Hints, & Review ]      ==> COMPLETE (100%)
+                         │
+                         v
+[ Tahap 25 - 27: Reference Surfaces & Config]     ==> COMPLETE (100%)
+                         │
+                         v
+[ Tahap 28 - 30: Reliability, Lifecycle & AC]     ==> COMPLETE (100% - PRODUCTION BASELINE)
+                         │
+                         v
+[ Tahap 31 - 33: Ergonomics, Modes, & Review Rev] ==> COMPLETE (100% - POST-MVP ENHANCEMENTS)
 ```
 
 ### Rincian Fase Pengembangan Produk
@@ -510,6 +526,9 @@ Pengembangan CTF Methodology Trainer MVP telah diselesaikan secara terstruktur m
 | **Fase 5: Guidance & Review** | Tahap 21 – 24 | Spoiler Policy Engine, AI Mentor, Progressive Hints, Session Review. | **COMPLETE** |
 | **Fase 6: Reference Surfaces**| Tahap 25 – 27 | Knowledge Base, Methodology Reference Viewer, Settings & Model Switch. | **COMPLETE** |
 | **Fase 7: Hardening & Acceptance**| Tahap 28 – 30 | Audit Reliabilitas, Manajemen Siklus Sesi (Delete/Reset), Verifikasi 26 Kriteria MVP. | **COMPLETE** |
+| **Fase 8: Ergonomics & Ingestion**| Tahap 31 | Reversible Checks, Stepper Interaktif, Penjelasan 3-Lapisan, Hapus/Edit In-Place, Smart Chips. | **COMPLETE** |
+| **Fase 9: Training Modes & Milestones**| Tahap 32 | Mode Guided vs Adventure, Tabel `session_milestones`, Verifikasi Jawaban Toleran, Filter Fase. | **COMPLETE** |
+| **Fase 10: Dynamic Path Comparison**| Tahap 33 | Matcher Review Berbasis Multi-Signal Token, Integrasi Terminal Flag, Deskripsi Sesi Selesai Otentik. | **COMPLETE** |
 
 ---
 
